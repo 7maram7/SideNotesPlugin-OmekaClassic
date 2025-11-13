@@ -59,10 +59,7 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
             $db->query("DELETE FROM `{$prefix}side_notes` WHERE id = ?", array($id));
 
             $this->_helper->flashMessenger(__('Note deleted successfully.'), 'success');
-            $this->_helper->redirector->gotoRoute(array(
-                'action' => 'browse',
-                'tab' => $tab
-            ), 'sideNotesDefault');
+            $this->_helper->redirector->gotoUrl(url('side-notes/browse', array('tab' => $tab)));
         }
     }
 

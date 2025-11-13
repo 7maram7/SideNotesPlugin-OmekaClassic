@@ -305,7 +305,7 @@ HTML;
     {
         $nav[] = array(
             'label' => __('Notes'),
-            'uri'   => url('side-notes'),
+            'uri'   => url('side-notes/browse'),
         );
         return $nav;
     }
@@ -316,24 +316,26 @@ HTML;
     public function hookDefineRoutes($args)
     {
         $router = $args['router'];
-        $router->addRoute(
-            'sideNotesDefault',
-            new Zend_Controller_Router_Route(
-                'side-notes/:action/*',
-                array(
-                    'module'     => 'SideNotes',
-                    'controller' => 'index',
-                    'action'     => 'browse'
-                )
-            )
-        );
+
+        // Route for /admin/side-notes (browse action)
         $router->addRoute(
             'sideNotesBrowse',
             new Zend_Controller_Router_Route(
                 'side-notes',
                 array(
-                    'module'     => 'SideNotes',
-                    'controller' => 'index',
+                    'controller' => 'side-notes_index',
+                    'action'     => 'browse'
+                )
+            )
+        );
+
+        // Route for /admin/side-notes/:action
+        $router->addRoute(
+            'sideNotesAction',
+            new Zend_Controller_Router_Route(
+                'side-notes/:action/*',
+                array(
+                    'controller' => 'side-notes_index',
                     'action'     => 'browse'
                 )
             )
