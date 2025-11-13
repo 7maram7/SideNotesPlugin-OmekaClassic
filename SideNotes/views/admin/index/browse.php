@@ -88,11 +88,11 @@ echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
 <h1><?php echo $pageTitle; ?></h1>
 
 <div class="side-notes-tabs">
-    <a href="<?php echo url('side-notes/browse', array('tab' => 'items')); ?>"
+    <a href="<?php echo url('side-notes/index/browse', array('tab' => 'items')); ?>"
        class="<?php echo ($currentTab === 'items') ? 'active' : ''; ?>">
         <?php echo __('Item Notes'); ?>
     </a>
-    <a href="<?php echo url('side-notes/browse', array('tab' => 'collections')); ?>"
+    <a href="<?php echo url('side-notes/index/browse', array('tab' => 'collections')); ?>"
        class="<?php echo ($currentTab === 'collections') ? 'active' : ''; ?>">
         <?php echo __('Collection Notes'); ?>
     </a>
@@ -101,7 +101,7 @@ echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
 <?php if (!empty($notes)): ?>
 
 <div class="side-notes-sorting">
-    <form method="get" action="<?php echo url('side-notes/browse'); ?>">
+    <form method="get" action="<?php echo url('side-notes/index/browse'); ?>">
         <input type="hidden" name="tab" value="<?php echo html_escape($currentTab); ?>" />
 
         <label for="sort"><?php echo __('Sort by:'); ?></label>
@@ -184,7 +184,7 @@ echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
                     <?php echo __('View'); ?>
                 </a>
                 |
-                <form method="post" action="<?php echo url('side-notes/delete'); ?>" class="delete-note-form"
+                <form method="post" action="<?php echo url('side-notes/index/delete'); ?>" class="delete-note-form"
                       onsubmit="return confirm('<?php echo __('Are you sure you want to delete this note?'); ?>');">
                     <input type="hidden" name="id" value="<?php echo $note['id']; ?>" />
                     <input type="hidden" name="tab" value="<?php echo html_escape($currentTab); ?>" />

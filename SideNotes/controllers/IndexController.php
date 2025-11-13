@@ -59,7 +59,7 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
             $db->query("DELETE FROM `{$prefix}side_notes` WHERE id = ?", array($id));
 
             $this->_helper->flashMessenger(__('Note deleted successfully.'), 'success');
-            $this->_helper->redirector->gotoUrl(url('side-notes/browse', array('tab' => $tab)));
+            $this->_helper->redirector->gotoUrl(url('side-notes/index/browse', array('tab' => $tab)));
         }
     }
 
@@ -71,13 +71,18 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
         $db = get_db();
         $prefix = $db->prefix;
 
-        // Map sort field to actual column names
-        $sortColumn = $sort;
-        if ($sort === 'created_by') {
-            $sortColumn = 'created_by_user_id';
-        } elseif ($sort === 'modified_by') {
-            $sortColumn = 'modified_by_user_id';
-        }
+        // Whitelist for sort columns (prevent SQL injection)
+        $allowedColumns = array(
+            'created'     => 'sn.created',
+            'modified'    => 'sn.modified',
+            'created_by'  => 'cu.username',
+            'modified_by' => 'mu.username'
+        );
+
+        $sortColumn = isset($allowedColumns[$sort]) ? $allowedColumns[$sort] : 'sn.created';
+
+        // Whitelist for order direction (prevent SQL injection)
+        $order = (strtoupper($order) === 'ASC') ? 'ASC' : 'DESC';
 
         $sql = "SELECT sn.*,
                        cu.username as created_by_username,
@@ -86,7 +91,7 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
                 LEFT JOIN `{$prefix}users` cu ON sn.created_by_user_id = cu.id
                 LEFT JOIN `{$prefix}users` mu ON sn.modified_by_user_id = mu.id
                 WHERE sn.record_type = ?
-                ORDER BY sn.{$sortColumn} {$order}";
+                ORDER BY {$sortColumn} {$order}";
 
         $notes = $db->fetchAll($sql, array($recordType));
 

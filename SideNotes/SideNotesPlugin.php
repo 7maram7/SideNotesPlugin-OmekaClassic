@@ -97,10 +97,24 @@ class SideNotesPlugin extends Omeka_Plugin_AbstractPlugin
                     ADD COLUMN `modified_by_user_id` INT(10) UNSIGNED NULL AFTER `created_by_user_id`");
             }
 
-            // Add indexes
-            $db->query("ALTER TABLE `{$prefix}side_notes`
-                ADD KEY `created` (`created`),
-                ADD KEY `modified` (`modified`)");
+            // Add indexes if they don't exist
+            try {
+                $indexes = $db->fetchAll("SHOW INDEX FROM `{$prefix}side_notes` WHERE Key_name = 'created'");
+                if (empty($indexes)) {
+                    $db->query("ALTER TABLE `{$prefix}side_notes` ADD KEY `created` (`created`)");
+                }
+            } catch (Exception $e) {
+                // Index might already exist, continue
+            }
+
+            try {
+                $indexes = $db->fetchAll("SHOW INDEX FROM `{$prefix}side_notes` WHERE Key_name = 'modified'");
+                if (empty($indexes)) {
+                    $db->query("ALTER TABLE `{$prefix}side_notes` ADD KEY `modified` (`modified`)");
+                }
+            } catch (Exception $e) {
+                // Index might already exist, continue
+            }
 
             // Set existing notes to current timestamp
             $now = date('Y-m-d H:i:s');
@@ -305,7 +319,7 @@ HTML;
     {
         $nav[] = array(
             'label' => __('Notes'),
-            'uri'   => url('side-notes/browse'),
+            'uri'   => url('side-notes/index/browse'),
         );
         return $nav;
     }
@@ -315,28 +329,35 @@ HTML;
      */
     public function hookDefineRoutes($args)
     {
+        // Only define routes for admin interface
+        if (!is_admin_theme()) {
+            return;
+        }
+
         $router = $args['router'];
 
-        // Route for /admin/side-notes (browse action)
+        // Main browse route
         $router->addRoute(
             'sideNotesBrowse',
             new Zend_Controller_Router_Route(
-                'side-notes',
+                'side-notes/index/browse',
                 array(
-                    'controller' => 'side-notes_index',
+                    'module'     => 'side-notes',
+                    'controller' => 'index',
                     'action'     => 'browse'
                 )
             )
         );
 
-        // Route for /admin/side-notes/:action
+        // Delete action route
         $router->addRoute(
-            'sideNotesAction',
+            'sideNotesDelete',
             new Zend_Controller_Router_Route(
-                'side-notes/:action/*',
+                'side-notes/index/delete',
                 array(
-                    'controller' => 'side-notes_index',
-                    'action'     => 'browse'
+                    'module'     => 'side-notes',
+                    'controller' => 'index',
+                    'action'     => 'delete'
                 )
             )
         );
@@ -409,20 +430,30 @@ HTML;
             $recordTitle = $this->_getRecordTitle($recordType, $note['record_id']);
             $recordUrl = $this->_getRecordUrl($recordType, $note['record_id']);
 
+            // Skip if record no longer exists (returns '[Unknown]')
+            if ($recordTitle === __('[Unknown]')) {
+                continue;
+            }
+
             // Truncate note preview
             $preview = $note['note'];
             if (mb_strlen($preview) > $previewLength) {
                 $preview = mb_substr($preview, 0, $previewLength) . '...';
             }
 
-            // Format timestamp
-            $timestamp = date($timestampFormat, strtotime($note['created']));
+            // Format timestamp safely
+            $timestamp = '';
+            if (!empty($note['created'])) {
+                $timestamp = date($timestampFormat, strtotime($note['created']));
+            }
 
             $html .= '<div class="note-item">';
             $html .= '<div class="note-title"><a href="' . htmlspecialchars($recordUrl, ENT_QUOTES, 'UTF-8') . '">'
                   . htmlspecialchars($recordTitle, ENT_QUOTES, 'UTF-8') . '</a></div>';
             $html .= '<div class="note-preview">' . htmlspecialchars($preview, ENT_QUOTES, 'UTF-8') . '</div>';
-            $html .= '<div class="note-timestamp">' . __('Created: ') . htmlspecialchars($timestamp, ENT_QUOTES, 'UTF-8') . '</div>';
+            if ($timestamp) {
+                $html .= '<div class="note-timestamp">' . __('Created: ') . htmlspecialchars($timestamp, ENT_QUOTES, 'UTF-8') . '</div>';
+            }
             $html .= '</div>';
         }
 
