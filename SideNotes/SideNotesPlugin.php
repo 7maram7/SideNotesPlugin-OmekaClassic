@@ -8,6 +8,8 @@ class SideNotesPlugin extends Omeka_Plugin_AbstractPlugin
         'install',
         'uninstall',
         'upgrade',
+        'config_form',
+        'config',
         'after_save_item',
         'after_save_collection',
         'admin_items_show_sidebar',
@@ -303,7 +305,7 @@ HTML;
     {
         $nav[] = array(
             'label' => __('Notes'),
-            'uri'   => url('side-notes/index/browse'),
+            'uri'   => url('side-notes'),
         );
         return $nav;
     }
@@ -317,9 +319,20 @@ HTML;
         $router->addRoute(
             'sideNotesDefault',
             new Zend_Controller_Router_Route(
-                'side-notes/:action',
+                'side-notes/:action/*',
                 array(
-                    'module'     => 'side-notes',
+                    'module'     => 'SideNotes',
+                    'controller' => 'index',
+                    'action'     => 'browse'
+                )
+            )
+        );
+        $router->addRoute(
+            'sideNotesBrowse',
+            new Zend_Controller_Router_Route(
+                'side-notes',
+                array(
+                    'module'     => 'SideNotes',
                     'controller' => 'index',
                     'action'     => 'browse'
                 )
@@ -424,9 +437,14 @@ HTML;
         $prefix = $db->prefix;
         $count = (int)get_option('side_notes_dashboard_count');
 
+        if (!$count) {
+            $count = 10; // Default fallback
+        }
+
         $sql = "SELECT record_id, note, created
                 FROM `{$prefix}side_notes`
                 WHERE record_type = ?
+                  AND created IS NOT NULL
                 ORDER BY created DESC
                 LIMIT ?";
 
