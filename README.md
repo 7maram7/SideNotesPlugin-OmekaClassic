@@ -18,3 +18,8 @@ Key features
 	•	Dedicated Notes browse page with tabs, sorting, and delete actions
 	•	Configurable preview length, dashboard note count, and date/time format
 	•	Upgrade path that preserves existing notes from earlier versions
+
+
+
+Installation
+Download the plugin from GitHub and extract the archive locally. Inside the repository you will find a folder named SideNotes. Create a ZIP archive containing only this SideNotes folder, then upload that ZIP to your Omeka Classic plugins directory and extract it there so the final path is omeka/plugins/SideNotes. (The other repository files such as images/, README.md, and test-plugin.php are not required on the server.) Finally, log in to the Omeka admin, go to Plugins, and click Install next to Side Notes.
