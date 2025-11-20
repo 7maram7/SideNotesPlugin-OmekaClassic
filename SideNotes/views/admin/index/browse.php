@@ -77,6 +77,18 @@ echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
     .delete-note-form {
         display: inline;
     }
+    .delete-link {
+        background: none;
+        border: none;
+        padding: 0;
+        color: #c00;
+        cursor: pointer;
+        font-size: inherit;
+        font-family: inherit;
+    }
+    .delete-link:hover {
+        text-decoration: underline;
+    }
     .no-notes {
         padding: 40px;
         text-align: center;
@@ -84,8 +96,6 @@ echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
         font-style: italic;
     }
 </style>
-
-<h1><?php echo $pageTitle; ?></h1>
 
 <div class="side-notes-tabs">
     <a href="<?php echo url('side-notes/index/browse', array('tab' => 'items')); ?>"
@@ -180,7 +190,7 @@ echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
                 <?php endif; ?>
             </td>
             <td class="note-actions">
-                <a href="<?php echo html_escape($note['record_url']); ?>" class="view-record">
+                <a href="<?php echo html_escape($note['record_url']); ?>">
                     <?php echo __('View'); ?>
                 </a>
                 |
@@ -188,7 +198,7 @@ echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
                       onsubmit="return confirm('<?php echo __('Are you sure you want to delete this note?'); ?>');">
                     <input type="hidden" name="id" value="<?php echo $note['id']; ?>" />
                     <input type="hidden" name="tab" value="<?php echo html_escape($currentTab); ?>" />
-                    <button type="submit" class="delete" style="background:none;border:none;color:#c00;cursor:pointer;text-decoration:underline;">
+                    <button type="submit" class="delete-link">
                         <?php echo __('Delete'); ?>
                     </button>
                 </form>
