@@ -279,16 +279,13 @@ HTML;
 
         echo '<div class="field">';
         echo '  <div class="two columns alpha">';
-        echo '    <label for="side_notes">' . __('Side Notes') . '</label>';
+        echo '    <label for="side_notes">' . __('Side Note') . '</label>';
         echo '  </div>';
         echo '  <div class="inputs five columns omega">';
-        echo '    <p class="explanation">'
-             . __('Internal note (visible only to site staff).')
-             . '</p>';
-        echo '    <textarea name="side_notes" id="side_notes" rows="5">'
+        echo '    <textarea name="side_notes" id="side_notes" rows="5" placeholder="'
+             . htmlspecialchars(__('Internal note (visible only to site staff).'), ENT_QUOTES, 'UTF-8') . '">'
              . htmlspecialchars($note, ENT_QUOTES, 'UTF-8')
              . '</textarea>';
-        echo '<br/><br/>';
         echo '  </div>';
         echo '</div>';
     }
@@ -345,19 +342,6 @@ HTML;
                     'module'     => 'side-notes',
                     'controller' => 'index',
                     'action'     => 'browse'
-                )
-            )
-        );
-
-        // Delete action route
-        $router->addRoute(
-            'sideNotesDelete',
-            new Zend_Controller_Router_Route(
-                'side-notes/index/delete',
-                array(
-                    'module'     => 'side-notes',
-                    'controller' => 'index',
-                    'action'     => 'delete'
                 )
             )
         );
