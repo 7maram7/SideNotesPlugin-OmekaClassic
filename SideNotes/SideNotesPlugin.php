@@ -345,19 +345,6 @@ HTML;
                 )
             )
         );
-
-        // Delete action route
-        $router->addRoute(
-            'sideNotesDelete',
-            new Zend_Controller_Router_Route(
-                'side-notes/index/delete',
-                array(
-                    'module'     => 'side-notes',
-                    'controller' => 'index',
-                    'action'     => 'delete'
-                )
-            )
-        );
     }
 
     /**

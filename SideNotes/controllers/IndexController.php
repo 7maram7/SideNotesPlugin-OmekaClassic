@@ -45,25 +45,6 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
     }
 
     /**
-     * Delete a note
-     */
-    public function deleteAction()
-    {
-        if ($this->getRequest()->isPost()) {
-            $id = (int)$this->getRequest()->getPost('id');
-            $tab = $this->getRequest()->getPost('tab', 'items');
-
-            $db = get_db();
-            $prefix = $db->prefix;
-
-            $db->query("DELETE FROM `{$prefix}side_notes` WHERE id = ?", array($id));
-
-            $this->_helper->flashMessenger(__('Note deleted successfully.'), 'success');
-            $this->_helper->redirector->gotoUrl(url('side-notes/index/browse', array('tab' => $tab)));
-        }
-    }
-
-    /**
      * Get notes with sorting
      */
     protected function _getNotes($recordType, $sort, $order)
