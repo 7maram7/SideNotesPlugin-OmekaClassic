@@ -40,8 +40,40 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
         $this->view->currentOrder = $order;
         $this->view->currentTab = $tab;
         $this->view->recordType = $recordType;
-        $this->view->previewLength = (int)get_option('side_notes_preview_length');
-        $this->view->timestampFormat = get_option('side_notes_timestamp_format');
+        $previewLength = (int)get_option('side_notes_preview_length');
+        $timestampFormat = get_option('side_notes_timestamp_format');
+        $this->view->previewLength = $previewLength ? $previewLength : 150;
+        $this->view->timestampFormat = $timestampFormat ? $timestampFormat : 'F j, Y g:i A';
+    }
+
+    /**
+     * Delete a note
+     */
+    public function deleteAction()
+    {
+        $tab = 'items';
+
+        if ($this->getRequest()->isPost()) {
+            $id = (int)$this->getRequest()->getPost('id');
+            $postTab = $this->getRequest()->getPost('tab');
+            if (in_array($postTab, array('items', 'collections'))) {
+                $tab = $postTab;
+            }
+
+            if ($id) {
+                $db = get_db();
+                $prefix = $db->prefix;
+                $db->query("DELETE FROM `{$prefix}side_notes` WHERE id = ?", array($id));
+                $this->_helper->flashMessenger(__('Note deleted successfully.'), 'success');
+            }
+        }
+
+        // url() already includes the /admin base path, so tell the
+        // redirector not to prepend it again.
+        $this->_helper->redirector->gotoUrl(
+            url('side-notes/index/browse', array('tab' => $tab)),
+            array('prependBase' => false)
+        );
     }
 
     /**

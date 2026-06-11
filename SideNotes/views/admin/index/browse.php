@@ -74,6 +74,21 @@ echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
     .note-actions {
         white-space: nowrap;
     }
+    .delete-note-form {
+        display: inline;
+    }
+    .delete-link {
+        background: none;
+        border: none;
+        padding: 0;
+        color: #c00;
+        cursor: pointer;
+        font-size: inherit;
+        font-family: inherit;
+    }
+    .delete-link:hover {
+        text-decoration: underline;
+    }
     .no-notes {
         padding: 40px;
         text-align: center;
@@ -155,9 +170,11 @@ echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
                 ?>
             </td>
             <td>
+                <?php if (!empty($note['created'])): ?>
                 <div class="note-timestamp">
                     <?php echo date($timestampFormat, strtotime($note['created'])); ?>
                 </div>
+                <?php endif; ?>
                 <?php if (!empty($note['created_by_username'])): ?>
                 <div class="note-user">
                     <?php echo __('by %s', html_escape($note['created_by_username'])); ?>
@@ -165,9 +182,11 @@ echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
                 <?php endif; ?>
             </td>
             <td>
+                <?php if (!empty($note['modified'])): ?>
                 <div class="note-timestamp">
                     <?php echo date($timestampFormat, strtotime($note['modified'])); ?>
                 </div>
+                <?php endif; ?>
                 <?php if (!empty($note['modified_by_username'])): ?>
                 <div class="note-user">
                     <?php echo __('by %s', html_escape($note['modified_by_username'])); ?>
@@ -178,6 +197,15 @@ echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
                 <a href="<?php echo html_escape($note['record_url']); ?>">
                     <?php echo __('View'); ?>
                 </a>
+                |
+                <form method="post" action="<?php echo url('side-notes/index/delete'); ?>" class="delete-note-form"
+                      onsubmit="return confirm('<?php echo __('Are you sure you want to delete this note?'); ?>');">
+                    <input type="hidden" name="id" value="<?php echo (int)$note['id']; ?>" />
+                    <input type="hidden" name="tab" value="<?php echo html_escape($currentTab); ?>" />
+                    <button type="submit" class="delete-link">
+                        <?php echo __('Delete'); ?>
+                    </button>
+                </form>
             </td>
         </tr>
         <?php endforeach; ?>

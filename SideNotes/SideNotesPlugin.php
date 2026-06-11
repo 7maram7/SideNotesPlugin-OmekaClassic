@@ -295,7 +295,7 @@ HTML;
      */
     public function hookConfigForm()
     {
-        include 'config_form.php';
+        include dirname(__FILE__) . '/config_form.php';
     }
 
     /**
@@ -304,9 +304,23 @@ HTML;
     public function hookConfig($args)
     {
         $post = $args['post'];
-        set_option('side_notes_preview_length', (int)$post['side_notes_preview_length']);
-        set_option('side_notes_timestamp_format', $post['side_notes_timestamp_format']);
-        set_option('side_notes_dashboard_count', (int)$post['side_notes_dashboard_count']);
+
+        // Clamp numeric settings to their valid ranges.
+        $previewLength = (int)$post['side_notes_preview_length'];
+        $previewLength = max(50, min(500, $previewLength ? $previewLength : 150));
+
+        $dashboardCount = (int)$post['side_notes_dashboard_count'];
+        $dashboardCount = max(1, min(50, $dashboardCount ? $dashboardCount : 10));
+
+        // Only accept known timestamp formats.
+        $allowedFormats = array('F j, Y g:i A', 'Y-m-d H:i', 'm/d/Y g:i A', 'd/m/Y H:i');
+        $timestampFormat = in_array($post['side_notes_timestamp_format'], $allowedFormats)
+            ? $post['side_notes_timestamp_format']
+            : 'F j, Y g:i A';
+
+        set_option('side_notes_preview_length', $previewLength);
+        set_option('side_notes_timestamp_format', $timestampFormat);
+        set_option('side_notes_dashboard_count', $dashboardCount);
     }
 
     /**
@@ -342,6 +356,19 @@ HTML;
                     'module'     => 'side-notes',
                     'controller' => 'index',
                     'action'     => 'browse'
+                )
+            )
+        );
+
+        // Delete action route
+        $router->addRoute(
+            'sideNotesDelete',
+            new Zend_Controller_Router_Route(
+                'side-notes/index/delete',
+                array(
+                    'module'     => 'side-notes',
+                    'controller' => 'index',
+                    'action'     => 'delete'
                 )
             )
         );
@@ -405,7 +432,13 @@ HTML;
         }
 
         $previewLength = (int)get_option('side_notes_preview_length');
+        if (!$previewLength) {
+            $previewLength = 150;
+        }
         $timestampFormat = get_option('side_notes_timestamp_format');
+        if (!$timestampFormat) {
+            $timestampFormat = 'F j, Y g:i A';
+        }
 
         $html = '<div class="panel side-notes-dashboard-panel">';
         $html .= '<h2>' . $title . '</h2>';
@@ -458,14 +491,16 @@ HTML;
             $count = 10; // Default fallback
         }
 
+        // LIMIT is inlined (already cast to int) because some database
+        // adapters do not support binding parameters in a LIMIT clause.
         $sql = "SELECT record_id, note, created
                 FROM `{$prefix}side_notes`
                 WHERE record_type = ?
                   AND created IS NOT NULL
                 ORDER BY created DESC
-                LIMIT ?";
+                LIMIT {$count}";
 
-        return $db->fetchAll($sql, array($recordType, $count));
+        return $db->fetchAll($sql, array($recordType));
     }
 
     /**
