@@ -16,7 +16,6 @@ class SideNotesPlugin extends Omeka_Plugin_AbstractPlugin
         'admin_collections_show_sidebar',
         'admin_items_panel_fields',
         'admin_collections_panel_fields',
-        'admin_head',
         'admin_dashboard',
         'define_routes',
     );
@@ -221,21 +220,24 @@ class SideNotesPlugin extends Omeka_Plugin_AbstractPlugin
             array($recordType, (int)$recordId)
         );
 
-        // Give our panel its own class so we can target it with JS
-        echo '<div class="panel side-notes-panel">';
+        // Match Omeka's native sidebar panels (e.g. .collection.panel):
+        // .panel > h4 + <div> wrapper. Keep our own class for the JS below.
+        echo '<div class="side-notes panel">';
         echo '<h4>' . __('Side Notes') . '</h4>';
+        echo '<div>';
         if ($note) {
-            echo '<p>' . htmlspecialchars($note, ENT_QUOTES, 'UTF-8') . '</p>';
+            echo '<p>' . nl2br(htmlspecialchars($note, ENT_QUOTES, 'UTF-8')) . '</p>';
         } else {
             echo '<p>' . __('No notes.') . '</p>';
         }
+        echo '</div>';
         echo '</div>';
 
         // jQuery to move Side Notes just above the "Public / Featured" panel
         echo <<<HTML
 <script type="text/javascript">
 jQuery(function($){
-  var ours   = $('.side-notes-panel').last();
+  var ours   = $('.side-notes.panel').last();
   var target = $('.public-featured.panel').first();
   if (ours.length && target.length) {
     ours.insertBefore(target);
@@ -304,9 +306,22 @@ HTML;
     public function hookConfig($args)
     {
         $post = $args['post'];
-        set_option('side_notes_preview_length', (int)$post['side_notes_preview_length']);
-        set_option('side_notes_timestamp_format', $post['side_notes_timestamp_format']);
-        set_option('side_notes_dashboard_count', (int)$post['side_notes_dashboard_count']);
+
+        // Clamp numeric options to the same ranges the form advertises so a
+        // crafted POST can't store out-of-range values.
+        $previewLength = min(500, max(50, (int)$post['side_notes_preview_length']));
+        $dashboardCount = min(50, max(1, (int)$post['side_notes_dashboard_count']));
+
+        // Only accept a timestamp format from the known set.
+        $allowedFormats = array('F j, Y g:i A', 'Y-m-d H:i', 'm/d/Y g:i A', 'd/m/Y H:i');
+        $format = isset($post['side_notes_timestamp_format']) ? $post['side_notes_timestamp_format'] : '';
+        if (!in_array($format, $allowedFormats, true)) {
+            $format = 'F j, Y g:i A';
+        }
+
+        set_option('side_notes_preview_length', $previewLength);
+        set_option('side_notes_timestamp_format', $format);
+        set_option('side_notes_dashboard_count', $dashboardCount);
     }
 
     /**
@@ -345,6 +360,19 @@ HTML;
                 )
             )
         );
+
+        // Delete route (POST only; enforced in the controller)
+        $router->addRoute(
+            'sideNotesDelete',
+            new Zend_Controller_Router_Route(
+                'side-notes/index/delete',
+                array(
+                    'module'     => 'side-notes',
+                    'controller' => 'index',
+                    'action'     => 'delete'
+                )
+            )
+        );
     }
 
     /**
@@ -354,43 +382,6 @@ HTML;
     {
         echo $this->_renderRecentNotesPanel('Item', __('Recent Item Notes'));
         echo $this->_renderRecentNotesPanel('Collection', __('Recent Collection Notes'));
-    }
-
-    /**
-     * Add custom CSS for notes panels
-     */
-    public function hookAdminHead($args)
-    {
-        echo '<style>
-            .side-notes-dashboard-panel { margin-bottom: 20px; }
-            .side-notes-dashboard-panel .note-item {
-                margin-bottom: 15px;
-                padding-bottom: 15px;
-                border-bottom: 1px solid #e7e7e7;
-            }
-            .side-notes-dashboard-panel .note-item:last-child {
-                border-bottom: none;
-            }
-            .side-notes-dashboard-panel .note-title {
-                font-weight: bold;
-                margin-bottom: 5px;
-            }
-            .side-notes-dashboard-panel .note-title a {
-                color: #1b1b1b;
-                text-decoration: none;
-            }
-            .side-notes-dashboard-panel .note-title a:hover {
-                color: #ff6700;
-            }
-            .side-notes-dashboard-panel .note-preview {
-                margin-bottom: 5px;
-                color: #555;
-            }
-            .side-notes-dashboard-panel .note-timestamp {
-                font-size: 0.9em;
-                color: #888;
-            }
-        </style>';
     }
 
     /**
@@ -407,8 +398,11 @@ HTML;
         $previewLength = (int)get_option('side_notes_preview_length');
         $timestampFormat = get_option('side_notes_timestamp_format');
 
-        $html = '<div class="panel side-notes-dashboard-panel">';
-        $html .= '<h2>' . $title . '</h2>';
+        // Use the same markup as Omeka's native "Recent Items" dashboard
+        // panel (.panel > h2 + .recent-row > .recent / .dash-edit) so it
+        // inherits the admin theme styling and sits in the dashboard grid.
+        $html = '<div class="panel">';
+        $html .= '<h2>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h2>';
 
         foreach ($notes as $note) {
             $recordTitle = $this->_getRecordTitle($recordType, $note['record_id']);
@@ -431,13 +425,17 @@ HTML;
                 $timestamp = date($timestampFormat, strtotime($note['created']));
             }
 
-            $html .= '<div class="note-item">';
-            $html .= '<div class="note-title"><a href="' . htmlspecialchars($recordUrl, ENT_QUOTES, 'UTF-8') . '">'
-                  . htmlspecialchars($recordTitle, ENT_QUOTES, 'UTF-8') . '</a></div>';
-            $html .= '<div class="note-preview">' . htmlspecialchars($preview, ENT_QUOTES, 'UTF-8') . '</div>';
+            $html .= '<div class="recent-row">';
+            $html .= '<p class="recent">';
+            $html .= '<a href="' . htmlspecialchars($recordUrl, ENT_QUOTES, 'UTF-8') . '">'
+                  . htmlspecialchars($recordTitle, ENT_QUOTES, 'UTF-8') . '</a>';
+            $html .= '<br>' . htmlspecialchars($preview, ENT_QUOTES, 'UTF-8');
             if ($timestamp) {
-                $html .= '<div class="note-timestamp">' . __('Created: ') . htmlspecialchars($timestamp, ENT_QUOTES, 'UTF-8') . '</div>';
+                $html .= '<br><small>' . __('Created: %s', htmlspecialchars($timestamp, ENT_QUOTES, 'UTF-8')) . '</small>';
             }
+            $html .= '</p>';
+            $html .= '<p class="dash-edit"><a href="' . htmlspecialchars($recordUrl, ENT_QUOTES, 'UTF-8') . '">'
+                  . __('View') . '</a></p>';
             $html .= '</div>';
         }
 
@@ -458,14 +456,17 @@ HTML;
             $count = 10; // Default fallback
         }
 
+        // Note: LIMIT is interpolated (not bound) because PDO/Zend quotes
+        // bound parameters as strings, producing invalid SQL like LIMIT '10'.
+        // $count is cast to int above, so this is injection-safe.
         $sql = "SELECT record_id, note, created
                 FROM `{$prefix}side_notes`
                 WHERE record_type = ?
                   AND created IS NOT NULL
                 ORDER BY created DESC
-                LIMIT ?";
+                LIMIT {$count}";
 
-        return $db->fetchAll($sql, array($recordType, $count));
+        return $db->fetchAll($sql, array($recordType));
     }
 
     /**
@@ -473,15 +474,19 @@ HTML;
      */
     protected function _getRecordTitle($recordType, $recordId)
     {
+        // Return the raw title; the caller escapes once on output.
+        // metadata() escapes by default, which would double-escape (e.g. "&amp;").
         if ($recordType === 'Item') {
             $item = get_record_by_id('Item', $recordId);
             if ($item) {
-                return metadata($item, array('Dublin Core', 'Title')) ?: __('[Untitled Item #%s]', $recordId);
+                return metadata($item, array('Dublin Core', 'Title'), array('no_escape' => true))
+                    ?: __('[Untitled Item #%s]', $recordId);
             }
         } elseif ($recordType === 'Collection') {
             $collection = get_record_by_id('Collection', $recordId);
             if ($collection) {
-                return metadata($collection, array('Dublin Core', 'Title')) ?: __('[Untitled Collection #%s]', $recordId);
+                return metadata($collection, array('Dublin Core', 'Title'), array('no_escape' => true))
+                    ?: __('[Untitled Collection #%s]', $recordId);
             }
         }
         return __('[Unknown]');
