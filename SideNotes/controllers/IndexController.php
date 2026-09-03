@@ -150,6 +150,85 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
     }
 
     /**
+     * Save an edited note from the browse page.
+     *
+     * Posted by the inline editor: save_note holds the note id and
+     * note_text[<id>] the new text. Clearing the text removes the note,
+     * matching the behaviour of the note field on the record edit form.
+     */
+    public function editAction()
+    {
+        $request = $this->getRequest();
+
+        if (!$request->isPost()) {
+            $this->_helper->flashMessenger(__('Invalid request.'), 'error');
+            return $this->_redirectToBrowse();
+        }
+
+        // Validate CSRF token.
+        $posted   = (string)$request->getPost('csrf_token');
+        $expected = $this->_getCsrfToken();
+        if ($posted === '' || !hash_equals($expected, $posted)) {
+            $this->_helper->flashMessenger(__('Security check failed. Please try again.'), 'error');
+            return $this->_redirectToBrowse();
+        }
+
+        // Preserve the user's place in the list.
+        $context = array(
+            'tab'        => $request->getPost('tab'),
+            'sort_field' => $request->getPost('sort_field'),
+            'sort_dir'   => $request->getPost('sort_dir'),
+            'page'       => $request->getPost('page'),
+        );
+
+        $noteId = (int)$request->getPost('save_note');
+        if ($noteId < 1) {
+            $this->_helper->flashMessenger(__('No note specified.'), 'error');
+            return $this->_redirectToBrowse($context);
+        }
+
+        $texts = $request->getPost('note_text');
+        if (!is_array($texts) || !array_key_exists($noteId, $texts)) {
+            $this->_helper->flashMessenger(__('No note text was submitted.'), 'error');
+            return $this->_redirectToBrowse($context);
+        }
+
+        $text = trim((string)$texts[$noteId]);
+
+        $db = get_db();
+
+        // Make sure the note still exists before writing.
+        $exists = $db->fetchOne(
+            "SELECT id FROM `{$db->prefix}side_notes` WHERE id = ?",
+            array($noteId)
+        );
+        if (!$exists) {
+            $this->_helper->flashMessenger(__('That note no longer exists.'), 'error');
+            return $this->_redirectToBrowse($context);
+        }
+
+        // An emptied note is deleted, consistent with the record edit form.
+        if ($text === '') {
+            $db->query("DELETE FROM `{$db->prefix}side_notes` WHERE id = ?", array($noteId));
+            $this->_helper->flashMessenger(__('The note was empty and has been deleted.'), 'success');
+            return $this->_redirectToBrowse($context);
+        }
+
+        $currentUser = current_user();
+        $userId = $currentUser ? $currentUser->id : null;
+
+        $db->query(
+            "UPDATE `{$db->prefix}side_notes`
+                SET note = ?, modified = ?, modified_by_user_id = ?
+              WHERE id = ?",
+            array($text, date('Y-m-d H:i:s'), $userId, $noteId)
+        );
+
+        $this->_helper->flashMessenger(__('The note was saved.'), 'success');
+        return $this->_redirectToBrowse($context);
+    }
+
+    /**
      * Redirect back to the browse page, preserving tab, sort and page.
      *
      * NOTE: url() already includes Omeka's admin base path, and the redirector

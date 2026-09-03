@@ -4,6 +4,32 @@ All notable changes to the SideNotes plugin are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-09-03
+
+### Added
+- **Notes are available through the Omeka API** at `/api/side_notes`, so
+  scripts and external tools can read and write them. Supports `index`, `get`,
+  `post`, `put` and `delete`.
+- `POST /api/side_notes` is an **upsert**: send `record_type`, `record_id` and
+  `note`, and the note is created, or replaced if that record already has one.
+  Callers never need to check first. `created` and `created_by_user_id` are
+  preserved across an overwrite so the audit trail survives.
+- `SideNote` record, `Table_SideNote` table and `Api_SideNote` adapter classes.
+  These map to the existing `side_notes` table — no schema change, no
+  duplicated data, and the admin screens are unaffected.
+- `?record_type=` and `?record_id=` filters on the API index action.
+
+### Security
+- Notes declare an ACL resource and are denied to everyone by default, then
+  granted to the `super` and `admin` roles.
+- **Omeka's API index action performs no per-record permission check** — it
+  returns whatever the table query yields (core hides private items the same
+  way, by filtering inside the table). `Table_SideNote::applySearchFilters`
+  therefore enforces the check itself and fails closed, so anonymous callers
+  get an empty list rather than the contents of every note.
+- Verified against the live site: unauthenticated `GET` by id, `POST` and
+  `DELETE` all return `403`, and an unauthenticated listing returns `[]`.
+
 ## [2.2.0] - 2026-08-13
 
 ### Added
@@ -14,6 +40,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   when many records share the same title.
 - **Batch delete**: per-row checkboxes, a select-all checkbox in the header,
   and a "Delete Selected" action bar.
+- **Inline editing**: an "Edit" action on each row turns the Note cell into a
+  textarea with Save/Cancel, so notes can be corrected from the browse page
+  without opening the Item or Collection. The editor shows the full note text,
+  not the truncated preview. Saving an empty note deletes it, matching the
+  note field on the record edit form.
 
 ### Fixed
 - **Deleting a note redirected to a 404 page.** `url()` already includes the
@@ -54,6 +85,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Dedicated database table; notes never appear on the public site.
 - Automatic table creation on install and removal on uninstall.
 
+[2.3.0]: https://github.com/7maram7/SideNotesPlugin-OmekaClassic/releases/tag/v2.3.0
 [2.2.0]: https://github.com/7maram7/SideNotesPlugin-OmekaClassic/releases/tag/v2.2.0
 [2.1.0]: https://github.com/7maram7/SideNotesPlugin-OmekaClassic/releases/tag/v2.1.0
 [1.0.0]: https://github.com/7maram7/SideNotesPlugin-OmekaClassic/releases/tag/v1.0.0

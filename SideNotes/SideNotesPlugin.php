@@ -18,10 +18,12 @@ class SideNotesPlugin extends Omeka_Plugin_AbstractPlugin
         'admin_collections_panel_fields',
         'admin_dashboard',
         'define_routes',
+        'define_acl',
     );
 
     protected $_filters = array(
         'admin_navigation_main',
+        'api_resources',
     );
 
     public function hookInstall()
@@ -208,6 +210,19 @@ class SideNotesPlugin extends Omeka_Plugin_AbstractPlugin
         $this->_renderSidebar('Collection', $args['collection']->id);
     }
 
+    /**
+     * Normalise a stored note to plain text.
+     *
+     * Notes are plain text, but some were saved with literal <br /> markup.
+     * Convert those to newlines and collapse runs of blank lines.
+     */
+    protected function _plainText($text)
+    {
+        $text = preg_replace('#<br\s*/?>#i', "\n", (string)$text);
+        $text = str_replace("\r\n", "\n", $text);
+        return preg_replace("/\n{3,}/", "\n\n", $text);
+    }
+
     protected function _renderSidebar($recordType, $recordId)
     {
         $db     = $this->_db;
@@ -226,7 +241,7 @@ class SideNotesPlugin extends Omeka_Plugin_AbstractPlugin
         echo '<h4>' . __('Side Notes') . '</h4>';
         echo '<div>';
         if ($note) {
-            echo '<p>' . nl2br(htmlspecialchars($note, ENT_QUOTES, 'UTF-8')) . '</p>';
+            echo '<p>' . nl2br(htmlspecialchars($this->_plainText($note), ENT_QUOTES, 'UTF-8')) . '</p>';
         } else {
             echo '<p>' . __('No notes.') . '</p>';
         }
@@ -286,7 +301,7 @@ HTML;
         echo '  <div class="inputs five columns omega">';
         echo '    <textarea name="side_notes" id="side_notes" rows="5" placeholder="'
              . htmlspecialchars(__('Internal note (visible only to site staff).'), ENT_QUOTES, 'UTF-8') . '">'
-             . htmlspecialchars($note, ENT_QUOTES, 'UTF-8')
+             . htmlspecialchars($this->_plainText($note), ENT_QUOTES, 'UTF-8')
              . '</textarea>';
         echo '  </div>';
         echo '</div>';
@@ -322,6 +337,50 @@ HTML;
         set_option('side_notes_preview_length', $previewLength);
         set_option('side_notes_timestamp_format', $format);
         set_option('side_notes_dashboard_count', $dashboardCount);
+    }
+
+    /**
+     * Expose notes through the Omeka API as /api/side_notes.
+     *
+     * POST is an upsert (see Api_SideNote::setPostData): sending a note for a
+     * record that already has one replaces it.
+     */
+    public function filterApiResources($apiResources)
+    {
+        $apiResources['side_notes'] = array(
+            'record_type'  => 'SideNote',
+            'actions'      => array('index', 'get', 'post', 'put', 'delete'),
+            'index_params' => array('record_type', 'record_id'),
+        );
+        return $apiResources;
+    }
+
+    /**
+     * Restrict who may read or write notes.
+     *
+     * Notes are internal staff commentary and must never be publicly
+     * readable. Omeka's API skips the permission check on GET for records
+     * with no ACL resource, so SideNote declares one (getResourceId) and the
+     * rules below deny everyone by default before granting admin roles.
+     */
+    public function hookDefineAcl($args)
+    {
+        $acl = $args['acl'];
+
+        if (!$acl->has('SideNotes')) {
+            $acl->addResource('SideNotes');
+        }
+
+        // Deny everyone first, including guests and unauthenticated API calls.
+        $acl->deny(null, 'SideNotes');
+
+        // Then grant the staff roles that can already see notes in the admin.
+        $roles = array('super', 'admin');
+        foreach ($roles as $role) {
+            if ($acl->hasRole($role)) {
+                $acl->allow($role, 'SideNotes');
+            }
+        }
     }
 
     /**
@@ -373,6 +432,19 @@ HTML;
                 )
             )
         );
+
+        // Inline edit route (POST only; enforced in the controller)
+        $router->addRoute(
+            'sideNotesEdit',
+            new Zend_Controller_Router_Route(
+                'side-notes/index/edit',
+                array(
+                    'module'     => 'side-notes',
+                    'controller' => 'index',
+                    'action'     => 'edit'
+                )
+            )
+        );
     }
 
     /**
@@ -414,7 +486,7 @@ HTML;
             }
 
             // Truncate note preview
-            $preview = $note['note'];
+            $preview = $this->_plainText($note['note']);
             if (mb_strlen($preview) > $previewLength) {
                 $preview = mb_substr($preview, 0, $previewLength) . '...';
             }

@@ -34,6 +34,21 @@ function side_notes_sort_th($label, $field, $currentSort, $currentDir, $tab, $pe
 endif;
 
 /**
+ * Normalise a stored note to plain text.
+ *
+ * Notes are plain text, but some were saved with literal <br /> markup.
+ * Convert those to newlines and collapse runs of blank lines.
+ */
+if (!function_exists('side_notes_plain_text')):
+function side_notes_plain_text($text)
+{
+    $text = preg_replace('#<br\s*/?>#i', "\n", (string)$text);
+    $text = str_replace("\r\n", "\n", $text);
+    return preg_replace("/\n{3,}/", "\n\n", $text);
+}
+endif;
+
+/**
  * Build a browse URL for a given page, keeping tab and sort.
  */
 if (!function_exists('side_notes_page_url')):
@@ -59,10 +74,27 @@ endif;
         margin: 0;
         cursor: pointer;
         font: inherit;
+        line-height: inherit;
+        vertical-align: baseline;
+        text-decoration: underline; /* match the <a> actions exactly */
         color: #B00D00;
     }
-    .action-links button.link-button:hover { text-decoration: underline; }
+    .action-links button.side-notes-edit-toggle { color: #003576; }
+    /* Keep each action on its own line so the narrow column reads cleanly. */
+    .action-links li { display: block; margin-bottom: 2px; }
     .side-notes-count { float: left; margin: 0 0 10px; color: #666; }
+
+    /* Inline note editor */
+    #side-notes .side-notes-editor textarea {
+        width: 100%;
+        box-sizing: border-box;
+        margin: 0 0 6px;
+        font-size: 0.95em;
+    }
+    #side-notes .side-notes-editor button {
+        margin: 0 5px 0 0;
+    }
+    #side-notes tr.is-editing td { background-color: #fffdf3; }
 
     /* Column widths. Omeka's own rule (.batch-edit-heading + th { width: 50% })
        would otherwise give the Record column half the table once a checkbox
@@ -198,12 +230,33 @@ $paginationHtml = ob_get_clean();
                 </td>
                 <td>
                     <?php
-                    $preview = $note['note'];
+                    // Older notes were stored with literal <br /> tags. Notes are
+                    // plain text, so turn those back into real line breaks rather
+                    // than showing markup in the editor. Saving stores the clean
+                    // version, so rows heal themselves as they are edited.
+                    $noteText = side_notes_plain_text($note['note']);
+
+                    $preview = $noteText;
                     if (mb_strlen($preview) > $previewLength) {
                         $preview = mb_substr($preview, 0, $previewLength) . '...';
                     }
-                    echo html_escape($preview);
                     ?>
+                    <div class="side-notes-preview" id="note-view-<?php echo (int)$note['id']; ?>">
+                        <?php echo html_escape($preview); ?>
+                    </div>
+                    <div class="side-notes-editor" id="note-edit-<?php echo (int)$note['id']; ?>" style="display:none;">
+                        <textarea name="note_text[<?php echo (int)$note['id']; ?>]" rows="6"
+                                  ><?php echo html_escape($noteText); ?></textarea>
+                        <button type="submit" class="green button small" name="save_note"
+                                value="<?php echo (int)$note['id']; ?>"
+                                formaction="<?php echo html_escape(url('side-notes/index/edit')); ?>">
+                            <?php echo __('Save'); ?>
+                        </button>
+                        <button type="button" class="button small side-notes-cancel"
+                                data-note-id="<?php echo (int)$note['id']; ?>">
+                            <?php echo __('Cancel'); ?>
+                        </button>
+                    </div>
                 </td>
                 <td>
                     <?php if (!empty($note['created'])): ?>
@@ -223,6 +276,12 @@ $paginationHtml = ob_get_clean();
                 </td>
                 <td>
                     <ul class="action-links">
+                        <li>
+                            <button type="button" class="link-button side-notes-edit-toggle"
+                                    data-note-id="<?php echo (int)$note['id']; ?>">
+                                <?php echo __('Edit'); ?>
+                            </button>
+                        </li>
                         <li><a href="<?php echo html_escape($note['record_url']); ?>"><?php echo __('View'); ?></a></li>
                         <li>
                             <button type="submit" class="link-button side-notes-delete-single"
@@ -266,6 +325,36 @@ jQuery(function ($) {
     // Confirm single-row deletes.
     form.on('click', '.side-notes-delete-single', function () {
         return confirm(<?php echo $msgOne; ?>);
+    });
+
+    // Inline note editing: swap the preview for a textarea in place.
+    form.on('click', '.side-notes-edit-toggle', function () {
+        var id = $(this).data('noteId');
+        var editor = $('#note-edit-' + id);
+
+        $('#note-view-' + id).hide();
+        editor.show();
+        $(this).closest('tr').addClass('is-editing');
+
+        var textarea = editor.find('textarea');
+        // Remember the original text so Cancel can restore it.
+        if (textarea.data('original') === undefined) {
+            textarea.data('original', textarea.val());
+        }
+        textarea.focus();
+    });
+
+    form.on('click', '.side-notes-cancel', function () {
+        var id = $(this).data('noteId');
+        var editor = $('#note-edit-' + id);
+        var textarea = editor.find('textarea');
+
+        if (textarea.data('original') !== undefined) {
+            textarea.val(textarea.data('original'));
+        }
+        editor.hide();
+        $('#note-view-' + id).show();
+        $(this).closest('tr').removeClass('is-editing');
     });
 
     // Confirm batch deletes, and block the action when nothing is selected.
