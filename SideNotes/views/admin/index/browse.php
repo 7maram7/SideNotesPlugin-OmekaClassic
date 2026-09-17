@@ -80,6 +80,33 @@ endif;
         color: #B00D00;
     }
     .action-links button.side-notes-edit-toggle { color: #003576; }
+
+    /* Render all three row actions identically regardless of element type.
+       One is an <a> and two are <button>s, and below 768px the admin theme
+       restyles browse actions as filled buttons (.browse .edit), which framed
+       one action and left the others as plain links. Scoping by #side-notes
+       outranks that rule without needing !important. */
+    #side-notes .action-links a,
+    #side-notes .action-links button.link-button {
+        display: inline;
+        background: none;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0;
+        margin: 0;
+        min-height: 0;
+        font: inherit;
+        font-weight: normal;
+        line-height: inherit;
+        vertical-align: baseline;
+        text-align: left;
+        text-decoration: underline;
+        white-space: nowrap;
+    }
+    #side-notes .action-links a,
+    #side-notes .action-links button.side-notes-edit-toggle { color: #003576; }
+    #side-notes .action-links button.side-notes-delete-single { color: #B00D00; }
     /* Keep each action on its own line so the narrow column reads cleanly. */
     .action-links li { display: block; margin-bottom: 2px; }
     .side-notes-count { float: left; margin: 0 0 10px; color: #666; }
