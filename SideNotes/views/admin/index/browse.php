@@ -109,7 +109,23 @@ endif;
     #side-notes .action-links button.side-notes-delete-single { color: #B00D00; }
     /* Keep each action on its own line so the narrow column reads cleanly. */
     .action-links li { display: block; margin-bottom: 2px; }
-    .side-notes-count { float: left; margin: 0 0 10px; color: #666; }
+    .side-notes-count { float: left; margin: 0 0 10px; color: #666; line-height: 38px; }
+
+    /* Pagination. The page box is a form, so keep it inline with the arrows.
+       The theme also has a typo in its own rule (height: 38x), which leaves the
+       input shorter than the 38px arrow buttons -- set a real height so they
+       line up. */
+    .pagination .page-input { line-height: 38px; color: #4f4f4f; white-space: nowrap; }
+    .pagination .page-input form {
+        display: inline;
+        margin: 0;
+        padding: 0;
+    }
+    .pagination .page-input input[type=text] {
+        height: 38px;
+        line-height: normal;
+        vertical-align: middle;
+    }
 
     /* Inline note editor */
     #side-notes .side-notes-editor textarea {
@@ -203,7 +219,19 @@ endif;
             margin: 0 16px 0 0;
         }
 
-        .side-notes-count { float: none; margin-bottom: 14px; }
+        /* Pagination centres instead of floating, and the arrows/page box sit
+           on one line rather than stacking. */
+        .pagination { float: none; text-align: center; }
+        .pagination li { float: none; display: inline-block; vertical-align: middle; }
+        .pagination_previous { margin: 0 8px 0 0; }
+        .pagination_next { margin: 0 0 0 8px; }
+
+        .side-notes-count {
+            float: none;
+            line-height: 1.5;
+            margin: 0 0 14px;
+            text-align: center;
+        }
     }
 </style>
 
@@ -238,21 +266,20 @@ if ($totalPages > 1):
     </li>
     <?php endif; ?>
 
-    <?php
-    // Show a compact window of page numbers around the current page.
-    $start = max(1, $currentPage - 2);
-    $end   = min($totalPages, $start + 4);
-    $start = max(1, $end - 4);
-    for ($p = $start; $p <= $end; $p++):
-    ?>
-        <li>
-            <?php if ($p == $currentPage): ?>
-                <a href="<?php echo html_escape(side_notes_page_url($p, $currentTab, $currentSort, $currentDir)); ?>"><strong><?php echo $p; ?></strong></a>
-            <?php else: ?>
-                <a href="<?php echo html_escape(side_notes_page_url($p, $currentTab, $currentSort, $currentDir)); ?>"><?php echo $p; ?></a>
-            <?php endif; ?>
-        </li>
-    <?php endfor; ?>
+    <?php // Omeka's native pagination widget: a page box rather than numbered
+          // links. The theme styles .page-input for exactly this, and it stays
+          // compact however many pages there are. ?>
+    <li class="page-input">
+        <form method="get" action="<?php echo html_escape(url('side-notes/index/browse')); ?>">
+            <input type="hidden" name="tab" value="<?php echo html_escape($currentTab); ?>">
+            <input type="hidden" name="sort_field" value="<?php echo html_escape($currentSort); ?>">
+            <input type="hidden" name="sort_dir" value="<?php echo html_escape($currentDir); ?>">
+            <?php echo __('Page'); ?>
+            <input type="text" name="page" value="<?php echo (int)$currentPage; ?>"
+                   aria-label="<?php echo __('Page number'); ?>">
+            <?php echo __('of'); ?> <?php echo (int)$totalPages; ?>
+        </form>
+    </li>
 
     <?php if ($currentPage < $totalPages): ?>
     <li class="pagination_next">
@@ -267,14 +294,7 @@ $paginationHtml = ob_get_clean();
 
 <?php echo $paginationHtml; ?>
 
-<p class="side-notes-count">
-    <?php echo __('%s notes total', $totalResults); ?>
-    <?php if ($totalPages > 1): ?>
-        &middot;
-        <?php echo __('Page'); ?> <?php echo (int)$currentPage; ?>
-        <?php echo __('of'); ?> <?php echo (int)$totalPages; ?>
-    <?php endif; ?>
-</p>
+<p class="side-notes-count"><?php echo __('%s notes total', $totalResults); ?></p>
 
 <form method="post" id="side-notes-batch-form"
       action="<?php echo html_escape(url('side-notes/index/delete')); ?>">

@@ -4,6 +4,21 @@ All notable changes to the SideNotes plugin are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.3] - 2026-09-17
+
+### Changed
+- **Pagination now uses Omeka's native widget.** Replaced the row of numbered
+  page links with the admin theme's own pattern -- previous arrow, a page box,
+  "of N", next arrow. The theme ships styling for `.page-input` and has no
+  current-page style at all, which is why the active page was indistinguishable
+  from the rest before; it is now simply the value in the box. It also stays
+  compact at any page count instead of growing a row of buttons, and collapses
+  to three controls on a phone, where it is centred rather than floated.
+- Worked around a typo in the theme's own rule (`height: 38x`) that left the
+  page box shorter than the 38px arrow buttons.
+- The redundant "Page 1 of 11" text was dropped from the count line, which now
+  reads just the total.
+
 ## [2.3.2] - 2026-09-17
 
 ### Fixed
