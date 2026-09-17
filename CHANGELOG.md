@@ -4,6 +4,17 @@ All notable changes to the SideNotes plugin are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.4] - 2026-09-17
+
+### Fixed
+- **The batch action bar was taller than Omeka's own.** The theme's `.small`
+  button class carries `margin-bottom: 20px`, which left dead space inside a
+  `.table-actions` bar padded by only 5px. Omeka cancels this for its own batch
+  bars via `.items .browse-items .table-actions button { float: left; height:
+  25px }` -- a selector this plugin's markup doesn't match -- so the same
+  treatment is now applied directly. On phones the button keeps a taller,
+  tappable height instead of 25px.
+
 ## [2.3.3] - 2026-09-17
 
 ### Changed

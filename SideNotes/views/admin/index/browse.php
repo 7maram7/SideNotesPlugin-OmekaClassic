@@ -111,6 +111,16 @@ endif;
     .action-links li { display: block; margin-bottom: 2px; }
     .side-notes-count { float: left; margin: 0 0 10px; color: #666; line-height: 38px; }
 
+    /* Batch action bar. The theme's .small class carries margin-bottom: 20px,
+       which leaves dead space inside a bar padded by only 5px. Omeka cancels
+       this for its own batch bars via
+       ".items .browse-items .table-actions button { float: left; height: 25px }",
+       a selector this markup doesn't match, so apply the same treatment here. */
+    .table-actions button {
+        margin-bottom: 0;
+        height: 25px;
+    }
+
     /* Pagination. The page box is a form, so keep it inline with the arrows.
        The theme also has a typo in its own rule (height: 38x), which leaves the
        input shorter than the 38px arrow buttons -- set a real height so they
@@ -217,6 +227,13 @@ endif;
         #side-notes .action-links li {
             display: inline-block;
             margin: 0 16px 0 0;
+        }
+
+        /* 25px is fine for a mouse but a poor tap target, so the full-width
+           mobile button keeps a comfortable height. */
+        .table-actions button {
+            height: auto;
+            padding: 9px 10px;
         }
 
         /* Pagination centres instead of floating, and the arrows/page box sit
