@@ -96,22 +96,88 @@ endif;
     }
     #side-notes tr.is-editing td { background-color: #fffdf3; }
 
-    /* Column widths. Omeka's own rule (.batch-edit-heading + th { width: 50% })
-       would otherwise give the Record column half the table once a checkbox
-       column exists, squeezing the Note text. Fixed layout so these stick. */
-    #side-notes { table-layout: fixed; width: 100%; }
     #side-notes th,
     #side-notes td {
         word-wrap: break-word;
         overflow-wrap: break-word;
     }
-    #side-notes .batch-edit-heading { width: 3%; }
-    #side-notes .batch-edit-heading + th { width: 16%; } /* Record */
-    #side-notes th:nth-child(3) { width: 11%; }          /* Identifier */
-    #side-notes th:nth-child(4) { width: 38%; }          /* Note  */
-    #side-notes th:nth-child(5),
-    #side-notes th:nth-child(6) { width: 12%; }          /* Created / Modified */
-    #side-notes th:nth-child(7) { width: 8%; }           /* Actions */
+
+    /* ---- Desktop / tablet (>= 768px) ----
+       Omeka's own rule (.batch-edit-heading + th { width: 50% }) would give the
+       Record column half the table once a checkbox column exists, squeezing
+       the Note text. Fixed layout so these widths stick. */
+    @media (min-width: 768px) {
+        #side-notes { table-layout: fixed; width: 100%; }
+        #side-notes .batch-edit-heading { width: 3%; }
+        #side-notes .batch-edit-heading + th { width: 16%; } /* Record */
+        #side-notes th:nth-child(3) { width: 11%; }          /* Identifier */
+        #side-notes th:nth-child(4) { width: 38%; }          /* Note  */
+        #side-notes th:nth-child(5),
+        #side-notes th:nth-child(6) { width: 12%; }          /* Created / Modified */
+        #side-notes th:nth-child(7) { width: 8%; }           /* Actions */
+    }
+
+    /* ---- Phones (< 768px) ----
+       Seven columns can't fit a phone: the headers collapse to one letter per
+       line. Each row becomes a labelled card instead, reusing the theme's
+       borders and colours so it still reads as Omeka. */
+    @media (max-width: 767px) {
+        #side-notes thead { display: none; }
+
+        #side-notes,
+        #side-notes tbody,
+        #side-notes tr,
+        #side-notes td {
+            display: block;
+            width: auto;
+        }
+
+        #side-notes tr {
+            border: 1px solid #DCDCDC;
+            background: #fff;
+            margin: 0 0 12px;
+            padding: 10px 12px;
+            overflow: hidden;
+        }
+        #side-notes tr.is-editing { background: #fffdf3; }
+        #side-notes tr.is-editing td { background: none; }
+
+        #side-notes td {
+            border: none;
+            border-bottom: 1px solid #ececec;
+            padding: 7px 0;
+        }
+        #side-notes td:last-child { border-bottom: none; }
+
+        /* Name each value, since the header row is hidden. */
+        #side-notes td[data-label]:before {
+            content: attr(data-label);
+            display: block;
+            margin-bottom: 2px;
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6f6f6f;
+        }
+
+        /* Record title leads the card. */
+        #side-notes td.side-notes-record { font-size: 1.05em; font-weight: bold; }
+
+        /* Checkbox and its label share a line. */
+        #side-notes td.batch-edit-heading { text-align: left; }
+        #side-notes td.batch-edit-heading:before {
+            display: inline;
+            margin: 0 6px 0 0;
+        }
+
+        /* Actions read across, not stacked. */
+        #side-notes .action-links li {
+            display: inline-block;
+            margin: 0 16px 0 0;
+        }
+
+        .side-notes-count { float: none; margin-bottom: 14px; }
+    }
 </style>
 
 <?php echo flash(); ?>
@@ -192,7 +258,8 @@ $paginationHtml = ob_get_clean();
     <input type="hidden" name="page" value="<?php echo (int)$currentPage; ?>">
 
     <div class="table-actions">
-        <button type="submit" name="batch_delete" value="1" class="red button small"
+        <button type="submit" name="batch_delete" value="1"
+                class="red button small full-width-mobile"
                 id="side-notes-batch-delete">
             <?php echo __('Delete Selected'); ?>
         </button>
@@ -216,19 +283,19 @@ $paginationHtml = ob_get_clean();
         <tbody>
             <?php foreach ($notes as $i => $note): ?>
             <tr class="<?php echo ($i % 2) ? 'even' : 'odd'; ?>">
-                <td class="batch-edit-heading">
+                <td class="batch-edit-heading" data-label="<?php echo __('Select'); ?>">
                     <input type="checkbox" name="note_ids[]" value="<?php echo (int)$note['id']; ?>"
                            aria-label="<?php echo __('Select this note'); ?>">
                 </td>
-                <td>
+                <td class="side-notes-record" data-label="<?php echo __('Record'); ?>">
                     <a href="<?php echo html_escape($note['record_url']); ?>">
                         <?php echo html_escape($note['record_title']); ?>
                     </a>
                 </td>
-                <td class="side-notes-identifier">
+                <td class="side-notes-identifier" data-label="<?php echo __('Identifier'); ?>">
                     <?php echo html_escape($note['record_identifier']); ?>
                 </td>
-                <td>
+                <td data-label="<?php echo __('Note'); ?>">
                     <?php
                     // Older notes were stored with literal <br /> tags. Notes are
                     // plain text, so turn those back into real line breaks rather
@@ -258,7 +325,7 @@ $paginationHtml = ob_get_clean();
                         </button>
                     </div>
                 </td>
-                <td>
+                <td data-label="<?php echo __('Created'); ?>">
                     <?php if (!empty($note['created'])): ?>
                         <?php echo html_escape(date($timestampFormat, strtotime($note['created']))); ?>
                         <?php if (!empty($note['created_by_username'])): ?>
@@ -266,7 +333,7 @@ $paginationHtml = ob_get_clean();
                         <?php endif; ?>
                     <?php endif; ?>
                 </td>
-                <td>
+                <td data-label="<?php echo __('Modified'); ?>">
                     <?php if (!empty($note['modified'])): ?>
                         <?php echo html_escape(date($timestampFormat, strtotime($note['modified']))); ?>
                         <?php if (!empty($note['modified_by_username'])): ?>
@@ -274,7 +341,7 @@ $paginationHtml = ob_get_clean();
                         <?php endif; ?>
                     <?php endif; ?>
                 </td>
-                <td>
+                <td data-label="<?php echo __('Actions'); ?>">
                     <ul class="action-links">
                         <li>
                             <button type="button" class="link-button side-notes-edit-toggle"

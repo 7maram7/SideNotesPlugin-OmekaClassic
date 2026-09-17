@@ -4,6 +4,20 @@ All notable changes to the SideNotes plugin are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-09-17
+
+### Fixed
+- **The Notes browse page was unusable on phones.** The seven-column table was
+  forced into a ~390px viewport by `table-layout: fixed`, collapsing headers to
+  one letter per line ("A c t i o n s") and squeezing every cell to a few
+  characters wide.
+- The fixed column widths are now scoped to viewports 768px and wider. Below
+  that, each note renders as a labelled card: the record title leads, each
+  value is captioned with its column name, and the row actions sit on one line.
+  The card reuses the admin theme's borders and colours, so it still reads as
+  Omeka. "Delete Selected" goes full width on mobile using the theme's own
+  `full-width-mobile` class.
+
 ## [2.3.0] - 2026-09-03
 
 ### Added
