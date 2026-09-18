@@ -119,13 +119,15 @@ endif;
     .side-notes-count { float: left; margin: 0 0 10px; color: #666; line-height: 38px; }
 
     /* Batch action bar. The theme's .small class carries margin-bottom: 20px,
-       which leaves dead space inside a bar padded by only 5px. Omeka cancels
-       this for its own batch bars via
-       ".items .browse-items .table-actions button { float: left; height: 25px }",
-       a selector this markup doesn't match, so apply the same treatment here. */
+       which leaves dead space inside a bar padded by only 5px, so clear it.
+
+       Note the theme's own rule for these bars also forces height: 25px with
+       no padding compensation -- and a .small button needs 28px (5 + 16
+       line-height + 5 + 2 border). Copying that squeezed the label against the
+       borders, so the height is deliberately left alone: the button keeps the
+       theme's real .small proportions. */
     .table-actions button {
         margin-bottom: 0;
-        height: 25px;
     }
 
     /* Search box, built as Omeka's own admin search rather than invented:
@@ -336,10 +338,8 @@ endif;
             margin: 0 16px 0 0;
         }
 
-        /* 25px is fine for a mouse but a poor tap target, so the full-width
-           mobile button keeps a comfortable height. */
+        /* Give the full-width mobile button a comfortable tap target. */
         .table-actions button {
-            height: auto;
             padding: 9px 10px;
         }
 

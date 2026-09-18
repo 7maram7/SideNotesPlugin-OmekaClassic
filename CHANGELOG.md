@@ -4,6 +4,18 @@ All notable changes to the SideNotes plugin are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.4] - 2026-09-18
+
+### Fixed
+- **"Delete Selected" had its label crushed against the borders.** 2.3.4 copied
+  the theme's own `height: 25px` for batch-bar buttons, but the theme pairs
+  that with no padding compensation: a `.small` button needs 28px (5px padding
+  + 16px line-height + 5px padding + 2px border), so forcing 25px left a 13px
+  content box for a 16px line. The height override is gone and the button now
+  keeps the theme's genuine `.small` proportions. The bar still sits tight,
+  because the fix for its excess height was clearing `margin-bottom`, not
+  forcing a height.
+
 ## [2.4.3] - 2026-09-18
 
 ### Fixed
