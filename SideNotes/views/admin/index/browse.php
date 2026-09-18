@@ -128,29 +128,62 @@ endif;
         height: 25px;
     }
 
-    /* Action bar: batch button on the left, note search on the right. */
-    .table-actions.side-notes-bar {
+    /* Search box, built as Omeka's own admin search rather than invented:
+       the theme's fields are 36px tall and its search submit is a 36px maroon
+       square carrying the magnifier glyph (see #search-form). Placement copies
+       #search-users -- the search on Omeka's Users browse page -- a
+       right-floated flex row above the table. No heights are guessed here;
+       the field keeps its native 36px. */
+    .side-notes-searchbar { overflow: hidden; }
+
+    #side-notes-search {
+        float: right;
         display: flex;
-        flex-wrap: wrap;
         align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        text-align: left;
+        flex-wrap: nowrap;
+        margin: 0 0 10px;
     }
-    .side-notes-search {
-        display: flex;
-        align-items: center;
-        gap: 6px;
+    #side-notes-search input[type=text] {
+        width: 240px;
         margin: 0;
     }
-    .side-notes-search input[type=text] {
+    #side-notes-search button {
+        width: 36px;
+        height: 36px;
+        min-height: 36px;
+        padding: 0;
         margin: 0;
-        height: 25px;
-        min-width: 220px;
-        box-sizing: border-box;
+        border: none;
+        border-radius: 0;
+        background: #82423B;
+        color: #fff;
+        text-shadow: none;
+        text-indent: -9999px;
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: 0.5s all;
     }
-    .side-notes-search button { margin: 0; }
-    .side-notes-clear { white-space: nowrap; }
+    #side-notes-search button:after {
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        content: "\f002";
+        position: absolute;
+        left: 0;
+        right: 0;
+        text-align: center;
+        text-indent: 0;
+    }
+    #side-notes-search button:hover,
+    #side-notes-search button:focus {
+        background: #68302C;
+        color: #fff;
+    }
+    .side-notes-clear {
+        margin-left: 10px;
+        white-space: nowrap;
+    }
     .side-notes-empty { color: #4f4f4f; font-style: italic; }
 
     /* Pagination. The page box is a form, so keep it inline with the arrows.
@@ -268,21 +301,13 @@ endif;
             padding: 9px 10px;
         }
 
-        /* Stack the bar: search on top (used far more often), batch button
-           below, both full width. */
-        .table-actions.side-notes-bar {
-            flex-direction: column;
-            align-items: stretch;
-        }
-        .side-notes-search {
-            order: -1;
-            flex-wrap: wrap;
-        }
-        .side-notes-search input[type=text] {
-            flex: 1 1 140px;
+        /* Search spans the width with the square button alongside, matching
+           what #search-users does on a phone (it simply stops floating). */
+        #side-notes-search { float: none; }
+        #side-notes-search input[type=text] {
+            flex: 1 1 auto;
+            width: auto;
             min-width: 0;
-            height: auto;
-            padding: 9px 8px;
         }
 
         /* Pagination centres instead of floating, and the arrows/page box sit
@@ -360,22 +385,14 @@ $paginationHtml = ob_get_clean();
 ?>
 
 <?php
-// The action bar sits OUTSIDE the batch form: a search form nested inside the
-// POST form would be invalid HTML. The batch button reaches its form via the
-// form="" attribute instead. The bar is always rendered, so a search that
-// matches nothing still leaves you a way to change or clear it.
+// The search sits in its own row above the table, right-aligned, exactly where
+// Omeka puts the search on its Users browse page (#search-users). Keeping it
+// out of the batch bar matters for two reasons: a form nested inside the batch
+// POST form would be invalid HTML, and anchoring it here means it does not
+// shift position when a search returns nothing and the batch button is absent.
 ?>
-<div class="table-actions side-notes-bar">
-    <?php if (!empty($notes)): ?>
-    <button type="submit" name="batch_delete" value="1"
-            form="side-notes-batch-form"
-            class="red button small full-width-mobile"
-            id="side-notes-batch-delete">
-        <?php echo __('Delete Selected'); ?>
-    </button>
-    <?php endif; ?>
-
-    <form method="get" class="side-notes-search"
+<div class="side-notes-searchbar">
+    <form method="get" id="side-notes-search"
           action="<?php echo html_escape(url('side-notes/index/browse')); ?>">
         <input type="hidden" name="tab" value="<?php echo html_escape($currentTab); ?>">
         <input type="hidden" name="sort_field" value="<?php echo html_escape($currentSort); ?>">
@@ -384,7 +401,7 @@ $paginationHtml = ob_get_clean();
                value="<?php echo html_escape($searchQuery); ?>"
                placeholder="<?php echo __('Search notes'); ?>"
                aria-label="<?php echo __('Search note text'); ?>">
-        <button type="submit" class="button small"><?php echo __('Search'); ?></button>
+        <button type="submit"><?php echo __('Search'); ?></button>
         <?php if ($searchQuery !== ''): ?>
         <a class="side-notes-clear"
            href="<?php echo html_escape(url('side-notes/index/browse', array('tab' => $currentTab))); ?>"><?php echo __('Clear'); ?></a>
@@ -450,6 +467,14 @@ jQuery(function ($) {
     <input type="hidden" name="sort_dir" value="<?php echo html_escape($currentDir); ?>">
     <input type="hidden" name="page" value="<?php echo (int)$currentPage; ?>">
     <input type="hidden" name="q" value="<?php echo html_escape($searchQuery); ?>">
+
+    <div class="table-actions">
+        <button type="submit" name="batch_delete" value="1"
+                class="red button small full-width-mobile"
+                id="side-notes-batch-delete">
+            <?php echo __('Delete Selected'); ?>
+        </button>
+    </div>
 
     <table id="side-notes">
         <thead>

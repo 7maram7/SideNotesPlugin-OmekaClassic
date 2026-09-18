@@ -4,6 +4,25 @@ All notable changes to the SideNotes plugin are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] - 2026-09-18
+
+### Fixed
+- **The search box was badly proportioned.** The theme's text fields are 36px
+  tall; the box had been forced to 25px to match the adjacent button, leaving a
+  squashed field paired with a mismatched button. It now keeps its native
+  height and nothing is overridden.
+- **Rebuilt as Omeka's actual search component** rather than an approximation:
+  a 36px field followed by a 36px maroon square submit (`#82423B`, hover
+  `#68302C`) carrying the Font Awesome magnifier -- identical to the search in
+  the admin header (`#search-form`).
+- **Moved out of the batch action bar** into its own right-aligned row above
+  the table, which is where Omeka puts browse-page search (`#search-users` on
+  the Users page). The batch bar is a 25px-button strip and was never designed
+  to hold a 36px field, which is what made the proportions clash.
+- **The box no longer moves when a search returns nothing.** It previously sat
+  beside "Delete Selected", so when no results meant no batch button, the box
+  shifted. Anchored in its own row, it stays put whatever the results.
+
 ## [2.4.0] - 2026-09-18
 
 ### Added
