@@ -4,6 +4,19 @@ All notable changes to the SideNotes plugin are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.6] - 2026-09-18
+
+### Changed
+- **The note count now sits in the heading, in parentheses**, matching Omeka's
+  own browse pages: `Side Notes (389 total)`, the same shape as
+  `Browse Items (6329 total)`. The separate "N notes total" line beneath the
+  tabs is gone.
+- While searching, the figure is the number of matches, so the heading doubles
+  as the result count.
+- The heading is refreshed alongside the table when a live search runs -- it
+  sits outside the region the search swaps, so it would otherwise have shown a
+  stale figure.
+
 ## [2.4.5] - 2026-09-18
 
 ### Changed

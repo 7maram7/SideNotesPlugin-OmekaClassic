@@ -1,5 +1,8 @@
 <?php
-$pageTitle = __('Side Notes');
+// Omeka carries the record count in the heading itself -- its items browse
+// reads "Browse Items (6329 total)" -- so the count goes here rather than in a
+// line of its own. While searching, the figure is the number of matches.
+$pageTitle = __('Side Notes (%s total)', $totalResults);
 echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
 
 /**
@@ -116,7 +119,6 @@ endif;
     #side-notes .action-links button.side-notes-delete-single { color: #B00D00; }
     /* Keep each action on its own line so the narrow column reads cleanly. */
     .action-links li { display: block; margin-bottom: 2px; }
-    .side-notes-count { float: left; margin: 0 0 10px; color: #666; line-height: 38px; }
 
     /* Batch action bar. The theme's .small class carries margin-bottom: 20px,
        which leaves dead space inside a bar padded by only 5px, so clear it.
@@ -359,12 +361,6 @@ endif;
         .pagination_previous { margin: 0 8px 0 0; }
         .pagination_next { margin: 0 0 0 8px; }
 
-        .side-notes-count {
-            float: none;
-            line-height: 1.5;
-            margin: 0 0 14px;
-            text-align: center;
-        }
     }
 </style>
 
@@ -457,15 +453,6 @@ $paginationHtml = ob_get_clean();
 <?php if (!empty($notes)): ?>
 
 <?php echo $paginationHtml; ?>
-
-<p class="side-notes-count">
-    <?php if ($searchQuery !== ''): ?>
-        <?php echo __('%s notes matching', $totalResults); ?>
-        &ldquo;<?php echo html_escape($searchQuery); ?>&rdquo;
-    <?php else: ?>
-        <?php echo __('%s notes total', $totalResults); ?>
-    <?php endif; ?>
-</p>
 
 <form method="post" id="side-notes-batch-form"
       action="<?php echo html_escape(url('side-notes/index/delete')); ?>">
@@ -704,11 +691,10 @@ jQuery(function ($) {
 
         request = $.get(buildUrl(term))
             .done(function (html) {
-                var fresh;
+                var doc, fresh;
                 try {
-                    fresh = new DOMParser()
-                        .parseFromString(html, 'text/html')
-                        .getElementById('side-notes-results');
+                    doc   = new DOMParser().parseFromString(html, 'text/html');
+                    fresh = doc.getElementById('side-notes-results');
                 } catch (e) {
                     return;
                 }
@@ -716,6 +702,15 @@ jQuery(function ($) {
                     return; // e.g. session expired and we got the login page
                 }
                 results.html(fresh.innerHTML);
+
+                // The count lives in the heading, which sits outside the
+                // swapped region, so carry it across too or it goes stale.
+                var freshTitle = doc.querySelector('#content h1');
+                var liveTitle  = document.querySelector('#content h1');
+                if (freshTitle && liveTitle) {
+                    liveTitle.textContent = freshTitle.textContent;
+                }
+
                 clear.toggle(term !== '');
                 if (window.history && window.history.replaceState) {
                     window.history.replaceState(null, '', buildUrl(term));
