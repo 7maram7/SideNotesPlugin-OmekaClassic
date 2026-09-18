@@ -4,6 +4,20 @@ All notable changes to the SideNotes plugin are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.3] - 2026-09-18
+
+### Fixed
+- **The search box sat on the left instead of the right.** The float was
+  written against a `.side-notes-searchform` wrapper that had never been added
+  to the markup, so it simply never applied. The field and its overlaid submit
+  are now wrapped in that element, and the control is right-aligned above the
+  table as intended.
+- **The pagination arrow rendered ~10px above the page box.** The theme gives
+  `.pagination li a` a `margin: 0 0 20px 0`; in a centred flex row it is the
+  margin box that gets centred, so the visible button floated high. The bottom
+  margin is now cleared, which is the last of the three separate causes of that
+  crooked row (floated items, the theme's invalid `height: 38x`, and this).
+
 ## [2.4.2] - 2026-09-18
 
 ### Fixed

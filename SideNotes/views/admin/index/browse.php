@@ -220,6 +220,10 @@ endif;
         align-items: center;
         height: 38px;
     }
+    /* The theme gives these links margin: 0 0 20px 0. In a centred flex row it
+       is the margin box that gets centred, so the arrow rendered ~10px above
+       the page box. */
+    .pagination li a { margin-bottom: 0; }
     .pagination .page-input {
         color: #4f4f4f;
         white-space: nowrap;
@@ -430,16 +434,19 @@ $paginationHtml = ob_get_clean();
 // shift position when a search returns nothing and the batch button is absent.
 ?>
 <div class="side-notes-searchbar">
-    <form method="get" id="side-notes-search"
+    <form method="get" class="side-notes-searchform"
           action="<?php echo html_escape(url('side-notes/index/browse')); ?>">
         <input type="hidden" name="tab" value="<?php echo html_escape($currentTab); ?>">
         <input type="hidden" name="sort_field" value="<?php echo html_escape($currentSort); ?>">
         <input type="hidden" name="sort_dir" value="<?php echo html_escape($currentDir); ?>">
-        <input type="text" id="side-notes-q" name="q" autocomplete="off"
-               value="<?php echo html_escape($searchQuery); ?>"
-               placeholder="<?php echo __('Search notes'); ?>"
-               aria-label="<?php echo __('Search note text'); ?>">
-        <button type="submit"><?php echo __('Search'); ?></button>
+        <?php // The field and its overlaid submit form one positioned control. ?>
+        <span id="side-notes-search">
+            <input type="text" id="side-notes-q" name="q" autocomplete="off"
+                   value="<?php echo html_escape($searchQuery); ?>"
+                   placeholder="<?php echo __('Search notes'); ?>"
+                   aria-label="<?php echo __('Search note text'); ?>">
+            <button type="submit"><?php echo __('Search'); ?></button>
+        </span>
         <a class="side-notes-clear" id="side-notes-clear"
            style="<?php echo ($searchQuery === '') ? 'display:none;' : ''; ?>"
            href="<?php echo html_escape(url('side-notes/index/browse', array('tab' => $currentTab))); ?>"><?php echo __('Clear'); ?></a>
