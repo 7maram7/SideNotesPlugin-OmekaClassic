@@ -4,6 +4,13 @@ All notable changes to the SideNotes plugin are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.5] - 2026-09-18
+
+### Changed
+- The browse page heading (and browser tab title) now reads **"Side Notes"**
+  rather than "Notes", matching the plugin's name. The left-hand admin
+  navigation item is still labelled "Notes".
+
 ## [2.4.4] - 2026-09-18
 
 ### Fixed

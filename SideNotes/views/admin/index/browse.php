@@ -1,5 +1,5 @@
 <?php
-$pageTitle = __('Notes');
+$pageTitle = __('Side Notes');
 echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
 
 /**
