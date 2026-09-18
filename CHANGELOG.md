@@ -4,6 +4,31 @@ All notable changes to the SideNotes plugin are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.2] - 2026-09-18
+
+### Fixed
+- **The space bar was sometimes swallowed while typing a search.** The box
+  submitted the form on a timer, so a natural pause mid-phrase triggered a page
+  reload and any keystrokes made while it was in flight were discarded.
+  Searching now fetches results and swaps them in place, leaving the field
+  untouched, so typing is never interrupted. Enter refreshes in place too. The
+  form is still a plain GET, so it degrades without JavaScript.
+- **Pagination sat crooked.** The theme floats the pagination list items, so
+  nothing shared a centre line, and its own field rule reads `height: 38x` --
+  invalid, so the page box fell back to the 36px base height and rode low
+  between the 38px arrow buttons. The row is now flex-aligned and all three
+  controls are 38px.
+- **The search focus ring now wraps the whole control**, matching the admin
+  header. Omeka's header search is a full-width field with the submit
+  *absolutely positioned over it* and `padding-right` reserving its space --
+  so the ring surrounds everything. A sibling button, as used before, left the
+  ring stopping at the field's edge. The control is now built the same way.
+
+### Changed
+- Row handlers are delegated from a persistent results container, so they
+  survive the table being refreshed by a search.
+- Results dim briefly while a search request is in flight.
+
 ## [2.4.1] - 2026-09-18
 
 ### Fixed

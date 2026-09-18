@@ -136,22 +136,38 @@ endif;
        the field keeps its native 36px. */
     .side-notes-searchbar { overflow: hidden; }
 
-    #side-notes-search {
+    .side-notes-searchform {
         float: right;
         display: flex;
         align-items: center;
-        flex-wrap: nowrap;
         margin: 0 0 10px;
     }
+
+    /* The control is built exactly like #search-form: a full-width field with
+       the submit absolutely positioned on top of it, and padding-right on the
+       field reserving the button's space. That structure is also why the focus
+       ring in Omeka's header appears to wrap the whole control -- the input IS
+       the whole control, with the button laid over it. A sibling button would
+       leave the ring stopping at the field's edge. */
+    #side-notes-search {
+        position: relative;
+        display: block;
+        width: 260px;
+    }
     #side-notes-search input[type=text] {
-        width: 240px;
+        width: 100%;
+        height: 36px;
+        padding-right: 36px;
         margin: 0;
     }
     #side-notes-search button {
+        position: absolute;
+        top: 0;
+        right: 0;
         width: 36px;
         height: 36px;
         min-height: 36px;
-        padding: 0;
+        padding: 0 5px;
         margin: 0;
         border: none;
         border-radius: 0;
@@ -159,7 +175,6 @@ endif;
         color: #fff;
         text-shadow: none;
         text-indent: -9999px;
-        position: relative;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -186,20 +201,43 @@ endif;
     }
     .side-notes-empty { color: #4f4f4f; font-style: italic; }
 
-    /* Pagination. The page box is a form, so keep it inline with the arrows.
-       The theme also has a typo in its own rule (height: 38x), which leaves the
-       input shorter than the 38px arrow buttons -- set a real height so they
-       line up. */
-    .pagination .page-input { line-height: 38px; color: #4f4f4f; white-space: nowrap; }
+    /* Dim the results very briefly while a search request is in flight. */
+    .side-notes-busy { opacity: 0.55; transition: opacity 0.15s ease; }
+
+    /* Pagination. Two things in the theme make this sit crooked: the list
+       items are floated (so nothing shares a centre line) and its own field
+       rule reads "height: 38x" -- invalid, so the box falls back to the 36px
+       base height and rides low between the 38px arrow buttons. Flex-align the
+       row and give all three the same 38px height. */
+    .pagination {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .pagination li {
+        float: none;
+        display: flex;
+        align-items: center;
+        height: 38px;
+    }
+    .pagination .page-input {
+        color: #4f4f4f;
+        white-space: nowrap;
+        line-height: normal;
+    }
     .pagination .page-input form {
-        display: inline;
+        display: flex;
+        align-items: center;
         margin: 0;
         padding: 0;
     }
     .pagination .page-input input[type=text] {
         height: 38px;
+        width: 40px;
+        margin: 0 5px;
+        padding: 0;
         line-height: normal;
-        vertical-align: middle;
+        text-align: center;
     }
 
     /* Inline note editor */
@@ -402,50 +440,13 @@ $paginationHtml = ob_get_clean();
                placeholder="<?php echo __('Search notes'); ?>"
                aria-label="<?php echo __('Search note text'); ?>">
         <button type="submit"><?php echo __('Search'); ?></button>
-        <?php if ($searchQuery !== ''): ?>
-        <a class="side-notes-clear"
+        <a class="side-notes-clear" id="side-notes-clear"
+           style="<?php echo ($searchQuery === '') ? 'display:none;' : ''; ?>"
            href="<?php echo html_escape(url('side-notes/index/browse', array('tab' => $currentTab))); ?>"><?php echo __('Clear'); ?></a>
-        <?php endif; ?>
     </form>
 </div>
 
-<script type="text/javascript">
-jQuery(function ($) {
-    var input = $('#side-notes-q');
-    if (!input.length) {
-        return;
-    }
-    var form    = input.closest('form');
-    var initial = input.val();
-    var timer   = null;
-
-    // Live search: submit shortly after typing stops, so results follow the
-    // query without a button press. Enter and the Search button still work if
-    // JavaScript is unavailable -- this is a real GET form, not a shim.
-    input.on('input', function () {
-        var field = this;
-        if (timer) {
-            clearTimeout(timer);
-        }
-        timer = setTimeout(function () {
-            if (field.value !== initial) {
-                form.get(0).submit();
-            }
-        }, 450);
-    });
-
-    // The page reloads to show results, so put the caret back at the end of
-    // what was typed and let the user keep going.
-    if (initial !== '') {
-        var el = input.get(0);
-        el.focus();
-        try {
-            el.setSelectionRange(el.value.length, el.value.length);
-        } catch (e) {}
-    }
-});
-</script>
-
+<div id="side-notes-results">
 <?php if (!empty($notes)): ?>
 
 <?php echo $paginationHtml; ?>
@@ -577,37 +578,56 @@ jQuery(function ($) {
 
 <?php echo $paginationHtml; ?>
 
+<?php else: ?>
+
+<?php if ($searchQuery !== ''): ?>
+<p class="side-notes-empty">
+    <?php echo __('No notes match'); ?>
+    &ldquo;<?php echo html_escape($searchQuery); ?>&rdquo;.
+</p>
+<?php else: ?>
+<p class="side-notes-empty"><?php echo __('There are no notes yet.'); ?></p>
+<?php endif; ?>
+
+<?php endif; ?>
+</div><?php // /#side-notes-results ?>
+
 <?php
-// Encode UI strings as JSON so they are safe to embed in the script block.
+// Encode strings and URLs as JSON so they are safe to embed in the script.
 $jsonFlags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
 $msgNone   = json_encode(__('Please select at least one note to delete.'), $jsonFlags);
 $msgOne    = json_encode(__('Delete this note? This cannot be undone.'), $jsonFlags);
 $msgMany   = json_encode(__('Delete the selected notes? This cannot be undone.'), $jsonFlags);
+$jsBase    = json_encode(url('side-notes/index/browse'), $jsonFlags);
+$jsTab     = json_encode($currentTab, $jsonFlags);
+$jsSort    = json_encode($currentSort, $jsonFlags);
+$jsDir     = json_encode($currentDir, $jsonFlags);
 ?>
 <script type="text/javascript">
 jQuery(function ($) {
-    var form = $('#side-notes-batch-form');
+    var results     = $('#side-notes-results');
     var boxSelector = 'input[name="note_ids[]"]';
 
-    // Select / deselect every row on this page.
-    $('#side-notes-check-all').on('change', function () {
-        form.find(boxSelector).prop('checked', this.checked);
+    // Every handler is delegated from the results container. The container
+    // itself persists while the live search below swaps its contents, so
+    // bindings survive a refresh of the table.
+    results.on('change', '#side-notes-check-all', function () {
+        results.find(boxSelector).prop('checked', this.checked);
     });
 
-    // Keep the header checkbox in sync with the rows.
-    form.on('change', boxSelector, function () {
-        var boxes = form.find(boxSelector);
-        $('#side-notes-check-all').prop('checked', boxes.length === boxes.filter(':checked').length);
+    results.on('change', boxSelector, function () {
+        var boxes = results.find(boxSelector);
+        $('#side-notes-check-all')
+            .prop('checked', boxes.length > 0 && boxes.length === boxes.filter(':checked').length);
     });
 
-    // Confirm single-row deletes.
-    form.on('click', '.side-notes-delete-single', function () {
+    results.on('click', '.side-notes-delete-single', function () {
         return confirm(<?php echo $msgOne; ?>);
     });
 
     // Inline note editing: swap the preview for a textarea in place.
-    form.on('click', '.side-notes-edit-toggle', function () {
-        var id = $(this).data('noteId');
+    results.on('click', '.side-notes-edit-toggle', function () {
+        var id     = $(this).data('noteId');
         var editor = $('#note-edit-' + id);
 
         $('#note-view-' + id).hide();
@@ -622,9 +642,9 @@ jQuery(function ($) {
         textarea.focus();
     });
 
-    form.on('click', '.side-notes-cancel', function () {
-        var id = $(this).data('noteId');
-        var editor = $('#note-edit-' + id);
+    results.on('click', '.side-notes-cancel', function () {
+        var id       = $(this).data('noteId');
+        var editor   = $('#note-edit-' + id);
         var textarea = editor.find('textarea');
 
         if (textarea.data('original') !== undefined) {
@@ -636,28 +656,96 @@ jQuery(function ($) {
     });
 
     // Confirm batch deletes, and block the action when nothing is selected.
-    $('#side-notes-batch-delete').on('click', function () {
-        var count = form.find(boxSelector + ':checked').length;
+    results.on('click', '#side-notes-batch-delete', function () {
+        var count = results.find(boxSelector + ':checked').length;
         if (count === 0) {
             alert(<?php echo $msgNone; ?>);
             return false;
         }
         return confirm(count === 1 ? <?php echo $msgOne; ?> : <?php echo $msgMany; ?>);
     });
+
+    /* ---- Live search ----------------------------------------------------
+       Results are fetched and swapped in place. An earlier version submitted
+       the form on a timer, which reloaded the page mid-word and discarded any
+       keystrokes made while the request was in flight -- that is why the space
+       bar appeared to be ignored. Nothing here touches the field, so typing is
+       never interrupted. The form still works as a plain GET without JS. */
+    var input = $('#side-notes-q');
+    if (!input.length) {
+        return;
+    }
+    var clear    = $('#side-notes-clear');
+    var timer    = null;
+    var request  = null;
+    var lastSent = input.val();
+
+    function buildUrl(term) {
+        return <?php echo $jsBase; ?> + '?' + $.param({
+            tab:        <?php echo $jsTab; ?>,
+            sort_field: <?php echo $jsSort; ?>,
+            sort_dir:   <?php echo $jsDir; ?>,
+            q:          term
+        });
+    }
+
+    function search(term) {
+        if (request) {
+            request.abort();
+        }
+        results.addClass('side-notes-busy');
+
+        request = $.get(buildUrl(term))
+            .done(function (html) {
+                var fresh;
+                try {
+                    fresh = new DOMParser()
+                        .parseFromString(html, 'text/html')
+                        .getElementById('side-notes-results');
+                } catch (e) {
+                    return;
+                }
+                if (!fresh) {
+                    return; // e.g. session expired and we got the login page
+                }
+                results.html(fresh.innerHTML);
+                clear.toggle(term !== '');
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState(null, '', buildUrl(term));
+                }
+            })
+            .always(function () {
+                results.removeClass('side-notes-busy');
+                request = null;
+            });
+    }
+
+    input.on('input', function () {
+        var field = this;
+        if (timer) {
+            clearTimeout(timer);
+        }
+        timer = setTimeout(function () {
+            if (field.value !== lastSent) {
+                lastSent = field.value;
+                search(lastSent);
+            }
+        }, 300);
+    });
+
+    // Enter refreshes in place rather than reloading the whole page.
+    input.closest('form').on('submit', function (e) {
+        if (!window.DOMParser) {
+            return; // let the browser submit normally
+        }
+        e.preventDefault();
+        if (timer) {
+            clearTimeout(timer);
+        }
+        lastSent = input.val();
+        search(lastSent);
+    });
 });
 </script>
-
-<?php else: ?>
-
-<?php if ($searchQuery !== ''): ?>
-<p class="side-notes-empty">
-    <?php echo __('No notes match'); ?>
-    &ldquo;<?php echo html_escape($searchQuery); ?>&rdquo;.
-</p>
-<?php else: ?>
-<p class="side-notes-empty"><?php echo __('There are no notes yet.'); ?></p>
-<?php endif; ?>
-
-<?php endif; ?>
 
 <?php echo foot(); ?>
