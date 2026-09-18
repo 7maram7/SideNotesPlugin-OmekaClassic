@@ -4,6 +4,19 @@ All notable changes to the SideNotes plugin are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.7] - 2026-09-18
+
+### Changed
+- **Search and pagination now share one row above the table** -- search on the
+  left, pagination on the right -- closing the empty space left behind when the
+  note count moved into the heading. Previously the search sat alone on the
+  right with the pagination on a row of its own.
+- On phones the row stacks: search across the full width, pagination centred
+  beneath it.
+- The top pager sits outside the region the live search swaps (so the search
+  field is never replaced mid-typing), so the search refreshes it explicitly
+  alongside the heading and the table.
+
 ## [2.4.6] - 2026-09-18
 
 ### Changed

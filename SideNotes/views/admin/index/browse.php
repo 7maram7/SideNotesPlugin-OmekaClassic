@@ -138,14 +138,20 @@ endif;
        #search-users -- the search on Omeka's Users browse page -- a
        right-floated flex row above the table. No heights are guessed here;
        the field keeps its native 36px. */
-    .side-notes-searchbar { overflow: hidden; }
+    /* One row above the table: search on the left, pagination on the right.
+       overflow:hidden contains both floats. */
+    .side-notes-toolbar { overflow: hidden; }
 
     .side-notes-searchform {
-        float: right;
+        float: left;
         display: flex;
         align-items: center;
         margin: 0 0 10px;
     }
+
+    .side-notes-pager { float: right; }
+    /* The theme floats .pagination itself; the wrapper handles that here. */
+    .side-notes-pager .pagination { float: none; margin: 0 0 10px; }
 
     /* The control is built exactly like #search-form: a full-width field with
        the submit absolutely positioned on top of it, and padding-right on the
@@ -345,8 +351,12 @@ endif;
             padding: 9px 10px;
         }
 
-        /* Search spans the width with the square button alongside, matching
-           what #search-users does on a phone (it simply stops floating). */
+        /* Stack the toolbar: search across the width, pagination centred
+           beneath it, matching what #search-users does on a phone (it simply
+           stops floating). */
+        .side-notes-searchform { float: none; margin-bottom: 12px; }
+        .side-notes-pager { float: none; }
+        .side-notes-pager .pagination { justify-content: center; }
         #side-notes-search { float: none; }
         #side-notes-search input[type=text] {
             flex: 1 1 auto;
@@ -429,7 +439,7 @@ $paginationHtml = ob_get_clean();
 // POST form would be invalid HTML, and anchoring it here means it does not
 // shift position when a search returns nothing and the batch button is absent.
 ?>
-<div class="side-notes-searchbar">
+<div class="side-notes-toolbar">
     <form method="get" class="side-notes-searchform"
           action="<?php echo html_escape(url('side-notes/index/browse')); ?>">
         <input type="hidden" name="tab" value="<?php echo html_escape($currentTab); ?>">
@@ -447,12 +457,16 @@ $paginationHtml = ob_get_clean();
            style="<?php echo ($searchQuery === '') ? 'display:none;' : ''; ?>"
            href="<?php echo html_escape(url('side-notes/index/browse', array('tab' => $currentTab))); ?>"><?php echo __('Clear'); ?></a>
     </form>
+
+    <?php // The top pagination shares this row, filling the space the count
+          // used to occupy. Both controls sit outside the swapped results
+          // region -- replacing the search field mid-typing would cost focus --
+          // so the live search refreshes this pager explicitly. ?>
+    <div class="side-notes-pager" id="side-notes-toppager"><?php echo $paginationHtml; ?></div>
 </div>
 
 <div id="side-notes-results">
 <?php if (!empty($notes)): ?>
-
-<?php echo $paginationHtml; ?>
 
 <form method="post" id="side-notes-batch-form"
       action="<?php echo html_escape(url('side-notes/index/delete')); ?>">
@@ -703,12 +717,19 @@ jQuery(function ($) {
                 }
                 results.html(fresh.innerHTML);
 
-                // The count lives in the heading, which sits outside the
-                // swapped region, so carry it across too or it goes stale.
+                // The count lives in the heading and the top pager sits in the
+                // toolbar -- both outside the swapped region, so carry them
+                // across too or they go stale.
                 var freshTitle = doc.querySelector('#content h1');
                 var liveTitle  = document.querySelector('#content h1');
                 if (freshTitle && liveTitle) {
                     liveTitle.textContent = freshTitle.textContent;
+                }
+
+                var freshPager = doc.getElementById('side-notes-toppager');
+                var livePager  = document.getElementById('side-notes-toppager');
+                if (freshPager && livePager) {
+                    livePager.innerHTML = freshPager.innerHTML;
                 }
 
                 clear.toggle(term !== '');
