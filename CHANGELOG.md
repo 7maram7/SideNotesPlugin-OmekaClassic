@@ -4,6 +4,30 @@ All notable changes to the SideNotes plugin are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-09-18
+
+### Added
+- **Search the note text** from the Notes browse page. The box sits in the
+  action bar beside "Delete Selected" on desktop, and moves above a
+  full-width batch button on mobile.
+- Searching is **live**: the box submits shortly after you stop typing, and the
+  caret is restored afterwards so you can keep typing. It is a real GET form,
+  so Enter and the Search button still work without JavaScript.
+- The search runs **server-side across every note**, not just the rows on the
+  current page -- filtering the visible page would have reported "no matches"
+  while results sat on another page. Results paginate normally.
+- The term is carried through pagination, column sorting, and the redirect
+  after a delete or an inline edit, so you stay inside your results.
+- A "Clear" link appears while a search is active, and the action bar is
+  rendered even when nothing matches, so a fruitless search can always be
+  changed or cleared.
+- The result count reads "N notes matching <term>" while searching.
+
+### Security
+- `%` and `_` in the search term are escaped, so they match literally instead
+  of acting as SQL wildcards. The term is length-capped and always bound as a
+  query parameter.
+
 ## [2.3.4] - 2026-09-17
 
 ### Fixed

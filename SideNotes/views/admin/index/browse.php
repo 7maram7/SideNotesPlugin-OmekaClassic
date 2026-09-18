@@ -10,7 +10,7 @@ echo head(array('title' => $pageTitle, 'bodyclass' => 'side-notes browse'));
  * so the theme shows the bold label and the directional sort icon.
  */
 if (!function_exists('side_notes_sort_th')):
-function side_notes_sort_th($label, $field, $currentSort, $currentDir, $tab, $perPageParams = array())
+function side_notes_sort_th($label, $field, $currentSort, $currentDir, $tab, $q = '')
 {
     $isActive = ($currentSort === $field);
     // Toggle direction on the active column; new columns start ascending.
@@ -21,12 +21,16 @@ function side_notes_sort_th($label, $field, $currentSort, $currentDir, $tab, $pe
         $thClass = ' class="sorting ' . ($currentDir === 'a' ? 'asc' : 'desc') . '"';
     }
 
-    // Changing the sort returns to page 1.
-    $url = url('side-notes/index/browse', array_merge($perPageParams, array(
+    // Changing the sort returns to page 1 but keeps any active search.
+    $params = array(
         'tab'        => $tab,
         'sort_field' => $field,
         'sort_dir'   => $newDir,
-    )));
+    );
+    if ($q !== '') {
+        $params['q'] = $q;
+    }
+    $url = url('side-notes/index/browse', $params);
 
     return '<th' . $thClass . '><a href="' . html_escape($url) . '">'
         . '<span>' . html_escape($label) . '</span></a></th>';
@@ -49,14 +53,17 @@ function side_notes_plain_text($text)
 endif;
 
 /**
- * Build a browse URL for a given page, keeping tab and sort.
+ * Build a browse URL for a given page, keeping tab, sort and search.
  */
 if (!function_exists('side_notes_page_url')):
-function side_notes_page_url($page, $tab, $sort, $dir)
+function side_notes_page_url($page, $tab, $sort, $dir, $q = '')
 {
     $params = array('tab' => $tab, 'sort_field' => $sort, 'sort_dir' => $dir);
     if ($page > 1) {
         $params['page'] = $page;
+    }
+    if ($q !== '') {
+        $params['q'] = $q;
     }
     return url('side-notes/index/browse', $params);
 }
@@ -120,6 +127,31 @@ endif;
         margin-bottom: 0;
         height: 25px;
     }
+
+    /* Action bar: batch button on the left, note search on the right. */
+    .table-actions.side-notes-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        text-align: left;
+    }
+    .side-notes-search {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+    }
+    .side-notes-search input[type=text] {
+        margin: 0;
+        height: 25px;
+        min-width: 220px;
+        box-sizing: border-box;
+    }
+    .side-notes-search button { margin: 0; }
+    .side-notes-clear { white-space: nowrap; }
+    .side-notes-empty { color: #4f4f4f; font-style: italic; }
 
     /* Pagination. The page box is a form, so keep it inline with the arrows.
        The theme also has a typo in its own rule (height: 38x), which leaves the
@@ -236,6 +268,23 @@ endif;
             padding: 9px 10px;
         }
 
+        /* Stack the bar: search on top (used far more often), batch button
+           below, both full width. */
+        .table-actions.side-notes-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .side-notes-search {
+            order: -1;
+            flex-wrap: wrap;
+        }
+        .side-notes-search input[type=text] {
+            flex: 1 1 140px;
+            min-width: 0;
+            height: auto;
+            padding: 9px 8px;
+        }
+
         /* Pagination centres instead of floating, and the arrows/page box sit
            on one line rather than stacking. */
         .pagination { float: none; text-align: center; }
@@ -269,8 +318,6 @@ endif;
     </li>
 </ul>
 
-<?php if (!empty($notes)): ?>
-
 <?php
 // Native-style pagination markup, reused above and below the table.
 ob_start();
@@ -279,7 +326,7 @@ if ($totalPages > 1):
 <ul class="pagination">
     <?php if ($currentPage > 1): ?>
     <li class="pagination_previous">
-        <a href="<?php echo html_escape(side_notes_page_url($currentPage - 1, $currentTab, $currentSort, $currentDir)); ?>"><?php echo __('Previous'); ?></a>
+        <a href="<?php echo html_escape(side_notes_page_url($currentPage - 1, $currentTab, $currentSort, $currentDir, $searchQuery)); ?>"><?php echo __('Previous'); ?></a>
     </li>
     <?php endif; ?>
 
@@ -291,6 +338,9 @@ if ($totalPages > 1):
             <input type="hidden" name="tab" value="<?php echo html_escape($currentTab); ?>">
             <input type="hidden" name="sort_field" value="<?php echo html_escape($currentSort); ?>">
             <input type="hidden" name="sort_dir" value="<?php echo html_escape($currentDir); ?>">
+            <?php if ($searchQuery !== ''): ?>
+            <input type="hidden" name="q" value="<?php echo html_escape($searchQuery); ?>">
+            <?php endif; ?>
             <?php echo __('Page'); ?>
             <input type="text" name="page" value="<?php echo (int)$currentPage; ?>"
                    aria-label="<?php echo __('Page number'); ?>">
@@ -300,7 +350,7 @@ if ($totalPages > 1):
 
     <?php if ($currentPage < $totalPages): ?>
     <li class="pagination_next">
-        <a href="<?php echo html_escape(side_notes_page_url($currentPage + 1, $currentTab, $currentSort, $currentDir)); ?>"><?php echo __('Next'); ?></a>
+        <a href="<?php echo html_escape(side_notes_page_url($currentPage + 1, $currentTab, $currentSort, $currentDir, $searchQuery)); ?>"><?php echo __('Next'); ?></a>
     </li>
     <?php endif; ?>
 </ul>
@@ -309,9 +359,88 @@ endif;
 $paginationHtml = ob_get_clean();
 ?>
 
+<?php
+// The action bar sits OUTSIDE the batch form: a search form nested inside the
+// POST form would be invalid HTML. The batch button reaches its form via the
+// form="" attribute instead. The bar is always rendered, so a search that
+// matches nothing still leaves you a way to change or clear it.
+?>
+<div class="table-actions side-notes-bar">
+    <?php if (!empty($notes)): ?>
+    <button type="submit" name="batch_delete" value="1"
+            form="side-notes-batch-form"
+            class="red button small full-width-mobile"
+            id="side-notes-batch-delete">
+        <?php echo __('Delete Selected'); ?>
+    </button>
+    <?php endif; ?>
+
+    <form method="get" class="side-notes-search"
+          action="<?php echo html_escape(url('side-notes/index/browse')); ?>">
+        <input type="hidden" name="tab" value="<?php echo html_escape($currentTab); ?>">
+        <input type="hidden" name="sort_field" value="<?php echo html_escape($currentSort); ?>">
+        <input type="hidden" name="sort_dir" value="<?php echo html_escape($currentDir); ?>">
+        <input type="text" id="side-notes-q" name="q" autocomplete="off"
+               value="<?php echo html_escape($searchQuery); ?>"
+               placeholder="<?php echo __('Search notes'); ?>"
+               aria-label="<?php echo __('Search note text'); ?>">
+        <button type="submit" class="button small"><?php echo __('Search'); ?></button>
+        <?php if ($searchQuery !== ''): ?>
+        <a class="side-notes-clear"
+           href="<?php echo html_escape(url('side-notes/index/browse', array('tab' => $currentTab))); ?>"><?php echo __('Clear'); ?></a>
+        <?php endif; ?>
+    </form>
+</div>
+
+<script type="text/javascript">
+jQuery(function ($) {
+    var input = $('#side-notes-q');
+    if (!input.length) {
+        return;
+    }
+    var form    = input.closest('form');
+    var initial = input.val();
+    var timer   = null;
+
+    // Live search: submit shortly after typing stops, so results follow the
+    // query without a button press. Enter and the Search button still work if
+    // JavaScript is unavailable -- this is a real GET form, not a shim.
+    input.on('input', function () {
+        var field = this;
+        if (timer) {
+            clearTimeout(timer);
+        }
+        timer = setTimeout(function () {
+            if (field.value !== initial) {
+                form.get(0).submit();
+            }
+        }, 450);
+    });
+
+    // The page reloads to show results, so put the caret back at the end of
+    // what was typed and let the user keep going.
+    if (initial !== '') {
+        var el = input.get(0);
+        el.focus();
+        try {
+            el.setSelectionRange(el.value.length, el.value.length);
+        } catch (e) {}
+    }
+});
+</script>
+
+<?php if (!empty($notes)): ?>
+
 <?php echo $paginationHtml; ?>
 
-<p class="side-notes-count"><?php echo __('%s notes total', $totalResults); ?></p>
+<p class="side-notes-count">
+    <?php if ($searchQuery !== ''): ?>
+        <?php echo __('%s notes matching', $totalResults); ?>
+        &ldquo;<?php echo html_escape($searchQuery); ?>&rdquo;
+    <?php else: ?>
+        <?php echo __('%s notes total', $totalResults); ?>
+    <?php endif; ?>
+</p>
 
 <form method="post" id="side-notes-batch-form"
       action="<?php echo html_escape(url('side-notes/index/delete')); ?>">
@@ -320,14 +449,7 @@ $paginationHtml = ob_get_clean();
     <input type="hidden" name="sort_field" value="<?php echo html_escape($currentSort); ?>">
     <input type="hidden" name="sort_dir" value="<?php echo html_escape($currentDir); ?>">
     <input type="hidden" name="page" value="<?php echo (int)$currentPage; ?>">
-
-    <div class="table-actions">
-        <button type="submit" name="batch_delete" value="1"
-                class="red button small full-width-mobile"
-                id="side-notes-batch-delete">
-            <?php echo __('Delete Selected'); ?>
-        </button>
-    </div>
+    <input type="hidden" name="q" value="<?php echo html_escape($searchQuery); ?>">
 
     <table id="side-notes">
         <thead>
@@ -339,8 +461,8 @@ $paginationHtml = ob_get_clean();
                 <th><?php echo __('Record'); ?></th>
                 <th><?php echo __('Identifier'); ?></th>
                 <th><?php echo __('Note'); ?></th>
-                <?php echo side_notes_sort_th(__('Created'), 'created', $currentSort, $currentDir, $currentTab); ?>
-                <?php echo side_notes_sort_th(__('Modified'), 'modified', $currentSort, $currentDir, $currentTab); ?>
+                <?php echo side_notes_sort_th(__('Created'), 'created', $currentSort, $currentDir, $currentTab, $searchQuery); ?>
+                <?php echo side_notes_sort_th(__('Modified'), 'modified', $currentSort, $currentDir, $currentTab, $searchQuery); ?>
                 <th><?php echo __('Actions'); ?></th>
             </tr>
         </thead>
@@ -502,7 +624,14 @@ jQuery(function ($) {
 
 <?php else: ?>
 
-<p><?php echo __('There are no notes yet.'); ?></p>
+<?php if ($searchQuery !== ''): ?>
+<p class="side-notes-empty">
+    <?php echo __('No notes match'); ?>
+    &ldquo;<?php echo html_escape($searchQuery); ?>&rdquo;.
+</p>
+<?php else: ?>
+<p class="side-notes-empty"><?php echo __('There are no notes yet.'); ?></p>
+<?php endif; ?>
 
 <?php endif; ?>
 

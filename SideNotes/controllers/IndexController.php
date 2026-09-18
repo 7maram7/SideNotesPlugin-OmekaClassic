@@ -38,6 +38,13 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
 
         $recordType = ($tab === 'items') ? 'Item' : 'Collection';
 
+        // Free-text search over the note body. Capped so a pathological query
+        // can't be used to build a huge LIKE pattern.
+        $q = trim((string)$request->getParam('q', ''));
+        if (mb_strlen($q) > 200) {
+            $q = mb_substr($q, 0, 200);
+        }
+
         // Page size follows the site's admin "results per page" setting.
         $perPage = (int)get_option('per_page_admin');
         if ($perPage < 1) {
@@ -45,7 +52,7 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
         }
 
         // Total count drives pagination.
-        $total = $this->_countNotes($recordType);
+        $total = $this->_countNotes($recordType, $q);
         $totalPages = ($total > 0) ? (int)ceil($total / $perPage) : 1;
 
         // Clamp the page so deleting the last row on the last page still lands
@@ -57,7 +64,7 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
             $page = $totalPages;
         }
 
-        $notes = $this->_getNotes($recordType, $sortField, $sortDir, $perPage, ($page - 1) * $perPage);
+        $notes = $this->_getNotes($recordType, $sortField, $sortDir, $perPage, ($page - 1) * $perPage, $q);
 
         // Pass data to view.
         $this->view->notes           = $notes;
@@ -72,6 +79,7 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
         $this->view->previewLength   = (int)get_option('side_notes_preview_length');
         $this->view->timestampFormat = get_option('side_notes_timestamp_format');
         $this->view->csrfToken       = $this->_getCsrfToken();
+        $this->view->searchQuery     = $q;
     }
 
     /**
@@ -105,6 +113,7 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
             'sort_field' => $request->getPost('sort_field'),
             'sort_dir'   => $request->getPost('sort_dir'),
             'page'       => $request->getPost('page'),
+            'q'          => $request->getPost('q'),
         );
 
         // A single-row Delete button wins over any checked boxes.
@@ -179,6 +188,7 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
             'sort_field' => $request->getPost('sort_field'),
             'sort_dir'   => $request->getPost('sort_dir'),
             'page'       => $request->getPost('page'),
+            'q'          => $request->getPost('q'),
         );
 
         $noteId = (int)$request->getPost('save_note');
@@ -259,6 +269,12 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
             $params['page'] = $page;
         }
 
+        // Keep the user inside their search results.
+        $q = isset($context['q']) ? trim((string)$context['q']) : '';
+        if ($q !== '') {
+            $params['q'] = $q;
+        }
+
         $this->_helper->redirector->gotoUrl(
             url('side-notes/index/browse', $params),
             array('prependBase' => false)
@@ -278,21 +294,36 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
     }
 
     /**
-     * Count notes of a given record type.
+     * Build a LIKE pattern that treats the user's input literally.
+     *
+     * Without this, typing % or _ would act as SQL wildcards.
      */
-    protected function _countNotes($recordType)
+    protected function _likePattern($q)
+    {
+        return '%' . addcslashes($q, '%_\\') . '%';
+    }
+
+    /**
+     * Count notes of a given record type, optionally matching a search term.
+     */
+    protected function _countNotes($recordType, $q = '')
     {
         $db = get_db();
-        return (int)$db->fetchOne(
-            "SELECT COUNT(*) FROM `{$db->prefix}side_notes` WHERE record_type = ?",
-            array($recordType)
-        );
+        $sql = "SELECT COUNT(*) FROM `{$db->prefix}side_notes` WHERE record_type = ?";
+        $params = array($recordType);
+
+        if ($q !== '') {
+            $sql .= " AND note LIKE ?";
+            $params[] = $this->_likePattern($q);
+        }
+
+        return (int)$db->fetchOne($sql, $params);
     }
 
     /**
      * Get one page of notes, sorted.
      */
-    protected function _getNotes($recordType, $sortField, $sortDir, $limit, $offset)
+    protected function _getNotes($recordType, $sortField, $sortDir, $limit, $offset, $q = '')
     {
         $db = get_db();
         $prefix = $db->prefix;
@@ -313,17 +344,24 @@ class SideNotes_IndexController extends Omeka_Controller_AbstractActionControlle
         $limit  = (int)$limit;
         $offset = (int)$offset;
 
+        $params = array($recordType);
+        $search = '';
+        if ($q !== '') {
+            $search = ' AND sn.note LIKE ?';
+            $params[] = $this->_likePattern($q);
+        }
+
         $sql = "SELECT sn.*,
                        cu.username as created_by_username,
                        mu.username as modified_by_username
                 FROM `{$prefix}side_notes` sn
                 LEFT JOIN `{$prefix}users` cu ON sn.created_by_user_id = cu.id
                 LEFT JOIN `{$prefix}users` mu ON sn.modified_by_user_id = mu.id
-                WHERE sn.record_type = ?
+                WHERE sn.record_type = ?{$search}
                 ORDER BY {$sortColumn} {$order}, sn.id {$order}
                 LIMIT {$limit} OFFSET {$offset}";
 
-        $notes = $db->fetchAll($sql, array($recordType));
+        $notes = $db->fetchAll($sql, $params);
 
         // Resolve titles/identifiers only for the rows on this page.
         foreach ($notes as &$note) {
